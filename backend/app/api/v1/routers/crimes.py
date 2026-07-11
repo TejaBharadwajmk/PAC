@@ -13,7 +13,7 @@ Endpoints:
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from fastapi import APIRouter, status, Query, Depends
+from fastapi import APIRouter, status, Query, Depends, BackgroundTasks
 
 from app.dependencies import DbSession, CurrentUser, require_roles
 from app.schemas.crime import (
@@ -22,6 +22,7 @@ from app.schemas.crime import (
 )
 from app.schemas.common import PaginatedResponse, MessageResponse
 from app.services.crime_service import CrimeService
+from app.services.dna_service import DNAService
 from app.models.crime import CrimeType, CrimeStatus, CrimeSeverity
 from app.models.user import UserRole
 
@@ -41,11 +42,16 @@ router = APIRouter()
 )
 async def register_crime(
     data: CrimeCreate,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ):
     service = CrimeService(db)
-    return await service.register_crime(data, current_user)
+    crime = await service.register_crime(data, current_user)
+    # Enqueue DNA generation as a background task.
+    # Runs AFTER the 201 response is sent to the client.
+    background_tasks.add_task(DNAService(None).generate, crime.id)
+    return crime
 
 
 @router.get(

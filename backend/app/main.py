@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
-from app.api.v1.routers import auth, crimes, criminals
+from app.api.v1.routers import auth, crimes, criminals, similarity
 
 # Setup logging before all other imports that might log
 setup_logging()
@@ -30,6 +30,31 @@ async def lifespan(app: FastAPI):
         f"Starting {settings.APP_NAME} v{settings.APP_VERSION} "
         f"[{settings.ENVIRONMENT.upper()}]"
     )
+
+    # ── Startup: recover orphaned DNA records ────────────────
+    # Any PENDING/FAILED records from before a crash are re-queued
+    # by the DNA service on next startup. Safe to run on every boot.
+    try:
+        from app.database import AsyncSessionLocal
+        from app.repositories.dna_repo import DNARepository
+        from app.services.dna_service import DNAService
+        import asyncio
+
+        async with AsyncSessionLocal() as session:
+            repo = DNARepository(session)
+            recoverable = await repo.get_recoverable(limit=200)
+            if recoverable:
+                logger.info(
+                    f"DNA startup sweep: {len(recoverable)} records to reprocess"
+                )
+                for dna_record in recoverable:
+                    asyncio.ensure_future(
+                        DNAService(None).generate(dna_record.crime_id)
+                    )
+    except Exception as exc:
+        # DB may not be available at startup (e.g., local dev without Docker)
+        logger.warning(f"DNA startup sweep skipped: {exc}")
+
     yield
     logger.info(f"Shutting down {settings.APP_NAME}")
 
@@ -86,6 +111,11 @@ app.include_router(
     criminals.router,
     prefix="/api/v1/criminals",
     tags=["Criminal Profiles"],
+)
+app.include_router(
+    similarity.router,
+    prefix="/api/v1/similarity",
+    tags=["Crime DNA & Similarity Intelligence"],
 )
 
 

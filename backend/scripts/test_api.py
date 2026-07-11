@@ -153,8 +153,9 @@ class TestPACAPI(unittest.TestCase):
     # 3. CRIME REGISTRATION & QUERY
     # ─────────────────────────────────────────────────────────
 
+    @patch("app.services.dna_service.DNAService.generate", new_callable=AsyncMock)
     @patch("app.services.crime_service.CrimeService.register_crime")
-    def test_register_crime_success(self, mock_reg):
+    def test_register_crime_success(self, mock_reg, mock_dna_gen):
         crime_uuid = uuid4()
         occurred_time = datetime.now(timezone.utc)
         mock_reg.return_value = Crime(
@@ -169,6 +170,7 @@ class TestPACAPI(unittest.TestCase):
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
+        mock_dna_gen.return_value = None  # background task is a no-op in tests
         
         payload = {
             "fir_number": "FIR/BLR/2024/1001",
