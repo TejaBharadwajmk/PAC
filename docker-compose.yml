@@ -1,0 +1,139 @@
+version: "3.8"
+
+# ============================================================
+# PAC — PoliceIT Analytics Core
+# Docker Compose — Full Stack (Phase 1)
+# ============================================================
+
+services:
+
+  # ── PostgreSQL + pgvector + PostGIS ─────────────────────
+  postgres:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres
+    container_name: pac_postgres
+    environment:
+      POSTGRES_DB: pac_db
+      POSTGRES_USER: pac_user
+      POSTGRES_PASSWORD: pac_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init_db.sql:/docker-entrypoint-initdb.d/01_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pac_user -d pac_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── Neo4j Graph Database ─────────────────────────────────
+  neo4j:
+    image: neo4j:5-community
+    container_name: pac_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/pac_neo4j_password_2024
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+    ports:
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt protocol
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis (cache + task queue) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pac_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── FastAPI Backend ──────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pac_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── ML Engine (Sentence Transformers + scikit-learn) ─────
+  mlengine:
+    build:
+      context: ./mlengine
+      dockerfile: Dockerfile
+    container_name: pac_mlengine
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./mlengine/.env
+    volumes:
+      - ./mlengine:/app
+      - ml_models_cache:/app/models_cache
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ── React Frontend ───────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pac_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: pac_postgres_data
+  neo4j_data:
+    name: pac_neo4j_data
+  neo4j_logs:
+    name: pac_neo4j_logs
+  redis_data:
+    name: pac_redis_data
+  ml_models_cache:
+    name: pac_ml_models_cache

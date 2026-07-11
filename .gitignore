@@ -1,0 +1,49 @@
+# ============================================================
+# PAC — Git Ignore Configuration
+# ============================================================
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Caches & Compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
+# Databases & local logs
+*.db
+*.sqlite3
+*.log
+pac_postgres_data/
+pac_neo4j_data/
+pac_neo4j_logs/
+pac_redis_data/
+pac_ml_models_cache/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS-specific
+Thumbs.db
+db.properties
+.DS_Store

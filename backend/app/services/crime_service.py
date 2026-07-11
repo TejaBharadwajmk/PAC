@@ -1,0 +1,161 @@
+"""
+PAC — Crime Registration Service
+
+Orchestrates crime registration workflow:
+  1. Validate FIR uniqueness
+  2. Persist Crime record with PostGIS geometry
+  3. Auto-extract MO features (rule-based)
+  4. Persist CrimeMO record
+  5. (Phase 2) Trigger async Crime DNA generation
+"""
+
+import logging
+from typing import Tuple, List, Optional
+from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import NotFoundError, ConflictError
+from app.repositories.crime_repo import CrimeRepository
+from app.models.crime import Crime, CrimeMO
+from app.models.user import User
+from app.schemas.crime import CrimeCreate, CrimeUpdate, CrimeFilterParams
+from app.services.mo_extraction_service import extract_mo_features
+
+logger = logging.getLogger(__name__)
+
+
+class CrimeService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+        self.repo = CrimeRepository(db)
+
+    async def register_crime(self, data: CrimeCreate, registered_by: User) -> Crime:
+        """
+        Register a new crime (FIR entry).
+
+        Automatically extracts MO features from mo_text if no explicit mo_features
+        are provided in the request body.
+        """
+        if await self.repo.get_by_fir_number(data.fir_number):
+            raise ConflictError(f"FIR number {data.fir_number!r} is already registered")
+
+        # Build PostGIS geometry string if coordinates provided
+        geom = None
+        if data.latitude is not None and data.longitude is not None:
+            geom = f"SRID=4326;POINT({data.longitude} {data.latitude})"
+
+        crime = Crime(
+            fir_number=data.fir_number,
+            crime_type=data.crime_type,
+            severity=data.severity,
+            district=data.district,
+            police_station=data.police_station,
+            location_address=data.location_address,
+            latitude=data.latitude,
+            longitude=data.longitude,
+            geom=geom,
+            description=data.description,
+            mo_text=data.mo_text,
+            occurred_at=data.occurred_at,
+            registered_by=registered_by.id,
+        )
+
+        created = await self.repo.create(crime)
+
+        # ── MO Feature Extraction ───────────────────────────
+        mo_source = data.mo_features
+        if mo_source is None and data.mo_text:
+            raw = extract_mo_features(data.mo_text, data.crime_type.value)
+            if raw:
+                from app.schemas.crime import CrimeMOCreate
+                try:
+                    mo_source = CrimeMOCreate(**raw)
+                except Exception as exc:
+                    logger.warning(f"MO feature schema validation failed: {exc}")
+
+        if mo_source:
+            mo = CrimeMO(
+                crime_id=created.id,
+                crime_method=mo_source.crime_method,
+                entry_method=mo_source.entry_method,
+                target_type=mo_source.target_type,
+                weapon_used=mo_source.weapon_used,
+                tools_used=mo_source.tools_used,
+                time_of_day=mo_source.time_of_day,
+                day_type=mo_source.day_type,
+                planning_level=mo_source.planning_level,
+                gang_involved=mo_source.gang_involved,
+                num_accused=mo_source.num_accused,
+                escape_method=mo_source.escape_method,
+                vehicle_used_in_crime=mo_source.vehicle_used_in_crime,
+                modus_operandi_tags=mo_source.modus_operandi_tags,
+            )
+            self.db.add(mo)
+            await self.db.flush()
+
+        logger.info(
+            f"Crime registered | fir={data.fir_number} type={data.crime_type.value} "
+            f"district={data.district} officer={registered_by.badge_number}"
+        )
+
+        # TODO Phase 2: enqueue async DNA generation task
+        # await enqueue_dna_generation(created.id)
+
+        return created
+
+    async def get_crime(self, crime_id: UUID) -> Crime:
+        crime = await self.repo.get_with_details(crime_id)
+        if crime is None:
+            raise NotFoundError("Crime", str(crime_id))
+        return crime
+
+    async def get_crime_by_fir(self, fir_number: str) -> Crime:
+        crime = await self.repo.get_by_fir_number(fir_number)
+        if crime is None:
+            raise NotFoundError("Crime", fir_number)
+        return crime
+
+    async def list_crimes(
+        self, params: CrimeFilterParams
+    ) -> Tuple[List[Crime], int]:
+        skip = (params.page - 1) * params.page_size
+        return await self.repo.get_filtered(
+            district=params.district,
+            crime_type=params.crime_type,
+            status=params.status,
+            severity=params.severity,
+            from_date=params.from_date,
+            to_date=params.to_date,
+            skip=skip,
+            limit=params.page_size,
+        )
+
+    async def update_crime(
+        self, crime_id: UUID, data: CrimeUpdate, updated_by: User
+    ) -> Crime:
+        crime = await self.repo.get(crime_id)
+        if crime is None:
+            raise NotFoundError("Crime", str(crime_id))
+
+        update_fields = data.model_dump(exclude_unset=True)
+
+        # Recompute geometry if coordinates changed
+        lat = update_fields.get("latitude", crime.latitude)
+        lon = update_fields.get("longitude", crime.longitude)
+        if lat is not None and lon is not None:
+            update_fields["geom"] = f"SRID=4326;POINT({lon} {lat})"
+
+        for field, value in update_fields.items():
+            if hasattr(crime, field):
+                setattr(crime, field, value)
+
+        updated = await self.repo.save(crime)
+        logger.info(f"Crime updated | fir={crime.fir_number} by={updated_by.badge_number}")
+        return updated
+
+    async def delete_crime(self, crime_id: UUID) -> None:
+        crime = await self.repo.get(crime_id)
+        if crime is None:
+            raise NotFoundError("Crime", str(crime_id))
+        await self.repo.delete(crime_id)
+        logger.info(f"Crime deleted | id={crime_id}")
