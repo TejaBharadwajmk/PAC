@@ -108,7 +108,12 @@ class CrimeCriminal(Base):
         index=True,
     )
     role = Column(
-        SAEnum(CrimeRole, name="crime_role", create_type=False),
+        SAEnum(
+            CrimeRole,
+            name="crime_role",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         default=CrimeRole.ACCUSED,
     )
     is_arrested = Column(Boolean, default=False)

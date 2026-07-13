@@ -31,7 +31,12 @@ class User(Base):
     district = Column(String(100), index=True)
     police_station = Column(String(200))
     role = Column(
-        SAEnum(UserRole, name="user_role", create_type=False),
+        SAEnum(
+            UserRole,
+            name="user_role",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=UserRole.OFFICER,
     )

@@ -48,9 +48,11 @@ async def register_crime(
 ):
     service = CrimeService(db)
     crime = await service.register_crime(data, current_user)
-    # Enqueue DNA generation as a background task.
+    # Enqueue DNA generation and Neo4j graph sync as background tasks.
     # Runs AFTER the 201 response is sent to the client.
+    from app.services.graph_service import sync_crime_to_graph
     background_tasks.add_task(DNAService(None).generate, crime.id)
+    background_tasks.add_task(sync_crime_to_graph, crime.id)
     return crime
 
 
@@ -131,11 +133,15 @@ async def get_crime(
 async def update_crime(
     crime_id: UUID,
     data: CrimeUpdate,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ):
     service = CrimeService(db)
-    return await service.update_crime(crime_id, data, current_user)
+    updated_crime = await service.update_crime(crime_id, data, current_user)
+    from app.services.graph_service import sync_crime_to_graph
+    background_tasks.add_task(sync_crime_to_graph, crime_id)
+    return updated_crime
 
 
 @router.delete(

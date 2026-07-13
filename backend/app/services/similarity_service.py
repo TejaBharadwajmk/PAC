@@ -131,7 +131,7 @@ class SimilarityService:
 
         # Recreate a request-like object for _hybrid_search
         request = SimilaritySearchRequest(
-            query_text="",          # not used in this mode
+            query_text="placeholder",          # not used in this mode
             limit=limit,
             min_similarity=min_similarity,
             district=district,

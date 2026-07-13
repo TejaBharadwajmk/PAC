@@ -74,7 +74,12 @@ class CrimeDNA(Base):
     # ── Intelligence Status ────────────────────────────────
     # Tracks the full DNA generation lifecycle
     status = Column(
-        SAEnum(DNAStatus, name="dna_status", create_type=False),
+        SAEnum(
+            DNAStatus,
+            name="dna_status",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=DNAStatus.PENDING,
         index=True,

@@ -210,6 +210,27 @@ class DNAService:
 
             await session.commit()
 
+            # Trigger behaviour profile regeneration on DNA completion
+            if embedding is not None:
+                try:
+                    from app.models.criminal import CrimeCriminal
+                    from app.services.behavior_service import BehaviorService
+                    links_res = await session.execute(
+                        select(CrimeCriminal.criminal_id).where(CrimeCriminal.crime_id == crime_id)
+                    )
+                    criminal_ids = links_res.scalars().all()
+                    if criminal_ids:
+                        behavior_service = BehaviorService(session)
+                        for criminal_id in criminal_ids:
+                            await behavior_service.generate_profile(criminal_id)
+                    
+                    # Trigger investigation priority update for this crime
+                    from app.services.prediction_service import PredictionService
+                    pred_svc = PredictionService(session)
+                    await pred_svc.generate_investigation_priority(crime_id)
+                except Exception as e:
+                    logger.error(f"Failed to auto-regenerate behavior profiles / investigation priorities after DNA update: {e}")
+
     # ── Manual re-index ────────────────────────────────────
 
     async def reindex(self, crime_id: UUID) -> None:

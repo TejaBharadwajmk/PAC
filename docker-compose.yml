@@ -2,12 +2,28 @@ version: "3.8"
 
 # ============================================================
 # PAC — PoliceIT Analytics Core
-# Docker Compose — Full Stack (Phase 1)
+# Docker Compose — Full Stack (Phase 2.1)
+# ============================================================
+#
+# Start order:
+#   1. postgres   (pgvector + PostGIS)
+#   2. redis
+#   3. neo4j
+#   4. mlengine   (SentenceTransformer — depends on postgres healthy)
+#   5. backend    (FastAPI — depends on postgres + redis + mlengine healthy)
+#   6. frontend   (React — depends on backend)
+#
+# Usage:
+#   docker-compose up --build -d          # first time
+#   docker-compose up -d                  # subsequent starts
+#   docker-compose logs -f backend        # follow logs
+#   docker-compose exec backend python scripts/seed_data.py
+#   docker-compose exec backend alembic upgrade head
 # ============================================================
 
 services:
 
-  # ── PostgreSQL + pgvector + PostGIS ─────────────────────
+  # ── PostgreSQL 16 + pgvector + PostGIS ──────────────────
   postgres:
     build:
       context: .
@@ -26,31 +42,11 @@ services:
       test: ["CMD-SHELL", "pg_isready -U pac_user -d pac_db"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 20s
     restart: unless-stopped
 
-  # ── Neo4j Graph Database ─────────────────────────────────
-  neo4j:
-    image: neo4j:5-community
-    container_name: pac_neo4j
-    environment:
-      NEO4J_AUTH: neo4j/pac_neo4j_password_2024
-      NEO4J_server_memory_heap_initial__size: 512m
-      NEO4J_server_memory_heap_max__size: 1G
-    ports:
-      - "7474:7474"   # Browser UI
-      - "7687:7687"   # Bolt protocol
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
-
-  # ── Redis (cache + task queue) ───────────────────────────
+  # ── Redis 7 (cache) ─────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: pac_redis
@@ -64,34 +60,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
     restart: unless-stopped
 
-  # ── FastAPI Backend ──────────────────────────────────────
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: pac_backend
+  # ── Neo4j 5 Community (graph DB) ───────────────────────
+  neo4j:
+    image: neo4j:5-community
+    container_name: pac_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/pac_neo4j_password_2024
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_PLUGINS: '[]'
     ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    env_file:
-      - ./backend/.env
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt protocol
     volumes:
-      - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - neo4j_data:/data
+      - neo4j_logs:/logs
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 15s
-      timeout: 5s
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
-  # ── ML Engine (Sentence Transformers + scikit-learn) ─────
+  # ── ML Engine (Sentence Transformers) ──────────────────
+  # Model is pre-downloaded at build time into the ml_models_cache volume.
+  # healthcheck uses /health endpoint which reports model readiness.
   mlengine:
     build:
       context: ./mlengine
@@ -105,26 +102,55 @@ services:
     env_file:
       - ./mlengine/.env
     volumes:
-      - ./mlengine:/app
       - ml_models_cache:/app/models_cache
+    environment:
+      - SENTENCE_TRANSFORMERS_HOME=/app/models_cache
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
       interval: 20s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 90s    # model loading can take 5-30s on first run
     restart: unless-stopped
 
-  # ── React Frontend ───────────────────────────────────────
-  frontend:
+  # ── FastAPI Backend ──────────────────────────────────────
+  # Runs Alembic migrations before starting uvicorn.
+  # Depends on mlengine being healthy so DNA background tasks work immediately.
+  backend:
     build:
-      context: ./frontend
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: pac_frontend
+    container_name: pac_backend
     ports:
-      - "3000:3000"
+      - "8000:8000"
     depends_on:
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mlengine:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    # Run migrations then start server
+    command: >
+      sh -c "
+        echo '>>> Running Alembic migrations...' &&
+        alembic upgrade head &&
+        echo '>>> Migrations complete. Starting uvicorn...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     restart: unless-stopped
+
+
 
 volumes:
   postgres_data:

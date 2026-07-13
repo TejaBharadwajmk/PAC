@@ -43,8 +43,18 @@ class Settings(BaseSettings):
     OLLAMA_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "mistral"
 
+    # ── AI Investigation Assistant (Phase 4.1) ─────────────
+    # Provider: 'gemini' | 'ollama' | 'mock'
+    LLM_PROVIDER: str = "gemini"
+    # Gemini model name (google-generativeai)
+    LLM_MODEL_NAME: str = "gemini-1.5-flash"
+    # Gemini API key (required when LLM_PROVIDER=gemini)
+    GEMINI_API_KEY: str = ""
+    # Max ranked evidence items passed to the LLM context
+    EVIDENCE_RANKER_TOP_N: int = 10
+
     # ── CORS ───────────────────────────────────────────────
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://frontend:3000"]
+    CORS_ORIGINS: List[str] = []
 
     model_config = SettingsConfigDict(
         env_file=".env",

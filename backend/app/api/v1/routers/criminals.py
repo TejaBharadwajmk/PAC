@@ -11,7 +11,7 @@ Endpoints:
 
 from typing import Optional, List
 from uuid import UUID
-from fastapi import APIRouter, status, Query
+from fastapi import APIRouter, status, Query, BackgroundTasks
 
 from app.dependencies import DbSession, CurrentUser
 from app.schemas.criminal import (
@@ -33,6 +33,7 @@ router = APIRouter()
 )
 async def register_criminal(
     data: CriminalCreate,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -55,7 +56,10 @@ async def register_criminal(
         identifying_marks=data.identifying_marks,
         is_wanted=data.is_wanted,
     )
-    return await repo.create(criminal)
+    new_criminal = await repo.create(criminal)
+    from app.services.graph_service import sync_criminal_to_graph
+    background_tasks.add_task(sync_criminal_to_graph, new_criminal.id)
+    return new_criminal
 
 
 @router.get(
@@ -114,6 +118,7 @@ async def get_criminal(
 async def update_criminal(
     criminal_id: UUID,
     data: CriminalUpdate,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     current_user: CurrentUser,
 ):
@@ -126,7 +131,10 @@ async def update_criminal(
         if hasattr(criminal, field):
             setattr(criminal, field, value)
 
-    return await repo.save(criminal)
+    updated_criminal = await repo.save(criminal)
+    from app.services.graph_service import sync_criminal_to_graph
+    background_tasks.add_task(sync_criminal_to_graph, criminal_id)
+    return updated_criminal
 
 
 @router.get(

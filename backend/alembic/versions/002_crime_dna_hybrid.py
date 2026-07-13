@@ -41,6 +41,10 @@ def upgrade() -> None:
     op.execute(
         "ALTER TABLE crime_dna ALTER COLUMN embedding DROP NOT NULL"
     )
+    # Make generated_at nullable as well since PENDING/FAILED rows don't have generation dates yet
+    op.execute(
+        "ALTER TABLE crime_dna ALTER COLUMN generated_at DROP NOT NULL"
+    )
 
     # ── 3. Status lifecycle columns ───────────────────────
     op.execute(
@@ -134,9 +138,12 @@ def downgrade() -> None:
     drop_sql = ", ".join(f"DROP COLUMN IF EXISTS {c}" for c in cols)
     op.execute(f"ALTER TABLE crime_dna {drop_sql}")
 
-    # Restore NOT NULL on embedding
+    # Restore NOT NULL on embedding and generated_at
     op.execute(
         "ALTER TABLE crime_dna ALTER COLUMN embedding SET NOT NULL"
+    )
+    op.execute(
+        "ALTER TABLE crime_dna ALTER COLUMN generated_at SET NOT NULL"
     )
 
     # Drop enum

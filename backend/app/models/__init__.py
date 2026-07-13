@@ -11,6 +11,7 @@ from app.models.criminal import Criminal, CrimeCriminal, CrimeRole
 from app.models.victim import Victim, CrimeVictim
 from app.models.crime_dna import CrimeDNA, EMBEDDING_DIM
 from app.models.behaviour import BehaviourProfile
+from app.models.prediction import PredictionProfile
 
 __all__ = [
     # User
@@ -34,4 +35,6 @@ __all__ = [
     "EMBEDDING_DIM",
     # Behaviour
     "BehaviourProfile",
+    # Prediction
+    "PredictionProfile",
 ]

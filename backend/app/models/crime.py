@@ -62,17 +62,32 @@ class Crime(Base):
 
     # Classification
     crime_type = Column(
-        SAEnum(CrimeType, name="crime_type", create_type=False),
+        SAEnum(
+            CrimeType,
+            name="crime_type",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         index=True,
     )
     severity = Column(
-        SAEnum(CrimeSeverity, name="crime_severity", create_type=False),
+        SAEnum(
+            CrimeSeverity,
+            name="crime_severity",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=CrimeSeverity.MEDIUM,
     )
     status = Column(
-        SAEnum(CrimeStatus, name="crime_status", create_type=False),
+        SAEnum(
+            CrimeStatus,
+            name="crime_status",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=CrimeStatus.REGISTERED,
         index=True,

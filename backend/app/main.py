@@ -16,7 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
-from app.api.v1.routers import auth, crimes, criminals, similarity
+from app.api.v1.routers import auth, crimes, criminals, similarity, geo, graph, behavior, prediction, assistant
+from app.graph_db import init_neo4j, close_neo4j
 
 # Setup logging before all other imports that might log
 setup_logging()
@@ -30,6 +31,9 @@ async def lifespan(app: FastAPI):
         f"Starting {settings.APP_NAME} v{settings.APP_VERSION} "
         f"[{settings.ENVIRONMENT.upper()}]"
     )
+
+    # Initialize Neo4j constraints and connectivity
+    await init_neo4j()
 
     # ── Startup: recover orphaned DNA records ────────────────
     # Any PENDING/FAILED records from before a crash are re-queued
@@ -56,6 +60,8 @@ async def lifespan(app: FastAPI):
         logger.warning(f"DNA startup sweep skipped: {exc}")
 
     yield
+    # Shutdown Neo4j pool
+    await close_neo4j()
     logger.info(f"Shutting down {settings.APP_NAME}")
 
 
@@ -116,6 +122,31 @@ app.include_router(
     similarity.router,
     prefix="/api/v1/similarity",
     tags=["Crime DNA & Similarity Intelligence"],
+)
+app.include_router(
+    geo.router,
+    prefix="/api/v1/geo",
+    tags=["Geo Intelligence Engine"],
+)
+app.include_router(
+    graph.router,
+    prefix="/api/v1/graph",
+    tags=["Criminal Network Intelligence"],
+)
+app.include_router(
+    behavior.router,
+    prefix="/api/v1/behavior",
+    tags=["Criminal Behaviour Intelligence"],
+)
+app.include_router(
+    prediction.router,
+    prefix="/api/v1/predictions",
+    tags=["Predictive Intelligence"],
+)
+app.include_router(
+    assistant.router,
+    prefix="/api/v1/assistant",
+    tags=["AI Investigation Assistant"],
 )
 
 

@@ -54,8 +54,8 @@ class DNARepository:
             select(CrimeDNA)
             .where(
                 or_(
-                    CrimeDNA.status == DNAStatus.PENDING,
-                    CrimeDNA.status == DNAStatus.FAILED,
+                    CrimeDNA.status == DNAStatus.PENDING.value,
+                    CrimeDNA.status == DNAStatus.FAILED.value,
                 )
             )
             .order_by(CrimeDNA.created_at.asc())
@@ -295,14 +295,14 @@ class DNARepository:
             select(CrimeDNA.status, func.count().label("n"))
             .group_by(CrimeDNA.status)
         )
-        counts = {row.status: row.n for row in result}
+        counts = {str(row.status).lower(): row.n for row in result}
         total = sum(counts.values())
-        completed = counts.get(DNAStatus.COMPLETED, 0)
+        completed = counts.get("completed", 0)
         return {
             "total_crimes": total,
-            "pending":    counts.get(DNAStatus.PENDING,    0),
-            "processing": counts.get(DNAStatus.PROCESSING, 0),
+            "pending":    counts.get("pending",    0),
+            "processing": counts.get("processing", 0),
             "completed":  completed,
-            "failed":     counts.get(DNAStatus.FAILED,     0),
+            "failed":     counts.get("failed",     0),
             "completion_rate_pct": round(completed / total * 100, 1) if total else 0.0,
         }
