@@ -188,6 +188,7 @@ export default function LoginPage() {
         district:       "Bengaluru Urban",
         police_station: demo.station,
         role:           demo.role,
+        is_active:      true,
       };
 
       setAccessToken(demoToken);
