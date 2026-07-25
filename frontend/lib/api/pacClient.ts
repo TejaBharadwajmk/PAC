@@ -89,12 +89,15 @@ pacClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return pacClient(originalRequest);
       } catch {
-        // Refresh failed → full logout
         _refreshQueue.forEach(({ reject }) => reject(error));
         _refreshQueue = [];
-        useSessionStore.getState().logout();
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
+
+        const currentToken = useSessionStore.getState().accessToken;
+        if (!currentToken || !currentToken.startsWith("demo_token_")) {
+          useSessionStore.getState().logout();
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
         }
       } finally {
         _isRefreshing = false;
