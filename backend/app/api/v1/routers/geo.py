@@ -10,6 +10,7 @@ from app.dependencies import DbSession, CurrentUser
 from app.schemas.geo import HotspotResponse, GeoStatisticsResponse
 from app.services.geo_service import GeoService
 from app.models.crime import CrimeType
+from app.core.cache import cache_response
 
 router = APIRouter()
 
@@ -20,6 +21,7 @@ router = APIRouter()
     summary="Get spatial hotspots",
     description="Identifies spatial crime clusters using PostGIS DBSCAN clustering.",
 )
+@cache_response(ttl_seconds=300, namespace="geo")
 async def get_hotspots(
     db: DbSession,
     current_user: CurrentUser,
@@ -103,6 +105,7 @@ async def get_crime_type_hotspots(
     summary="Get spatial statistics summary",
     description="Returns aggregate statistical metadata for hotspots and crime density.",
 )
+@cache_response(ttl_seconds=600, namespace="geo")
 async def get_statistics(
     db: DbSession,
     current_user: CurrentUser,

@@ -91,6 +91,31 @@ class CrimeRepository(BaseRepository[Crime]):
         )
         return list(result.scalars().all())
 
+    async def get_by_registered_user(
+        self,
+        user_id: UUID,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Tuple[List[Crime], int]:
+        """Return crimes registered by a specific officer, paginated."""
+        count_q = (
+            select(func.count())
+            .select_from(Crime)
+            .where(Crime.registered_by == user_id)
+        )
+        total = (await self.session.execute(count_q)).scalar_one()
+
+        data_q = (
+            select(Crime)
+            .options(selectinload(Crime.mo_features))
+            .where(Crime.registered_by == user_id)
+            .order_by(Crime.occurred_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        crimes = list((await self.session.execute(data_q)).scalars().all())
+        return crimes, total
+
     async def crimes_without_dna(self, limit: int = 100) -> List[Crime]:
         """Return crimes that have MO text but no Crime DNA yet."""
         from app.models.crime_dna import CrimeDNA

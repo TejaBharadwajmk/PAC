@@ -33,6 +33,9 @@ pac_neo4j_data/
 pac_neo4j_logs/
 pac_redis_data/
 pac_ml_models_cache/
+celerybeat-schedule*
+backend/celerybeat-schedule*
+
 
 # IDEs and Editors
 .vscode/

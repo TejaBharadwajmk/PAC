@@ -16,7 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
-from app.api.v1.routers import auth, crimes, criminals, similarity, geo, graph, behavior, prediction, assistant
+from app.core.audit_middleware import AuditMiddleware
+from app.api.v1.routers import auth, crimes, criminals, similarity, geo, graph, behavior, prediction, assistant, audit, cctns
 from app.graph_db import init_neo4j, close_neo4j
 
 # Setup logging before all other imports that might log
@@ -67,7 +68,9 @@ async def lifespan(app: FastAPI):
 
 # ── FastAPI Application ────────────────────────────────────
 app = FastAPI(
+    redirect_slashes=False,
     title=settings.APP_NAME,
+
     version=settings.APP_VERSION,
     description=(
         "**PAC — PoliceIT Analytics Core**\n\n"
@@ -98,6 +101,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Audit Middleware ───────────────────────────────────────
+# Added after CORS so audit captures real client identity headers.
+# Starlette processes middleware in LIFO order (outermost = last added).
+app.add_middleware(AuditMiddleware)
 
 # ── Exception Handlers ─────────────────────────────────────
 setup_exception_handlers(app)
@@ -147,6 +155,16 @@ app.include_router(
     assistant.router,
     prefix="/api/v1/assistant",
     tags=["AI Investigation Assistant"],
+)
+app.include_router(
+    audit.router,
+    prefix="/api/v1/audit",
+    tags=["Audit Trail (Admin)"],
+)
+app.include_router(
+    cctns.router,
+    prefix="/api/v1/cctns",
+    tags=["CCTNS Data Ingestion"],
 )
 
 

@@ -1,5 +1,5 @@
 """
-PAC — Similarity & DNA Intelligence Router (Phase 2)
+PAC — Similarity & DNA Intelligence Router (Phase 5)
 
 Endpoints:
   POST  /api/v1/similarity/search           — Search by raw MO text
@@ -38,9 +38,18 @@ router = APIRouter()
     description=(
         "Hybrid 3-phase similarity search:\n\n"
         "1. **Pre-filter** — SQL WHERE clause by crime_type, district, time\n"
-        "2. **Vector ANN** — pgvector cosine similarity (all-MiniLM-L6-v2)\n"
-        "3. **Feature scoring** — structured MO overlap + hybrid score\n\n"
-        "Each result includes `explanation` and `matched_features` for full investigative explainability."
+        "2. **Vector ANN** — pgvector cosine similarity (paraphrase-multilingual-MiniLM-L12-v2)\n"
+        "3. **Feature scoring** — structured MO overlap (9 features)\n"
+        "4. **Rank fusion** — signal-agnostic HybridRankEngine blends Semantic + FTS + MO\n\n"
+        "**Phase 5 — Per-request weight overrides:**\n"
+        "Pass `semantic_weight`, `fts_weight`, and/or `mo_weight` in the request body "
+        "to override the server-side defaults for this request only. "
+        "Weights are automatically renormalized by HybridRankEngine so they always sum to 1.0.\n\n"
+        "**Diagnostics:**\n"
+        "Set `include_debug=true` to receive a `debug` block in the response containing "
+        "the active signals, normalized weights, and configured weights used for rank fusion.\n\n"
+        "Each result includes `explanation`, `explanations`, `matched_features`, and "
+        "`missing_features` for full investigative explainability."
     ),
 )
 async def search_similar_crimes(
@@ -138,8 +147,10 @@ async def reindex_crime_dna(
 ):
     dna_service = DNAService(db)
     await dna_service.reindex(crime_id)
-    # Launch background generation
-    background_tasks.add_task(dna_service.generate, crime_id)
+    # Launch background generation via Celery or BackgroundTasks fallback
+    from app.core.task_dispatcher import dispatch_task
+    from app.tasks import task_generate_crime_dna
+    dispatch_task(task_generate_crime_dna, dna_service.generate, background_tasks, crime_id)
     return MessageResponse(
         message=f"Crime DNA reindexing queued for {crime_id}. "
                 f"Status will change PENDING → PROCESSING → COMPLETED."

@@ -1,0 +1,66 @@
+{
+  "weapon_used": {
+    "knife": ["knife", "dagger", "blade", "machete", "ಚಾಕು", "chaku", "sword", "talwar"],
+    "gun": ["gun", "pistol", "revolver", "firearm", "rifle", "shotgun", "ಕೋವಿ", "tupaki"],
+    "iron_rod": ["rod", "bar", "iron rod", "crowbar", "lathi", "stick", "ಕಬೂಣದ ಸಲಾಕೆ", "ಕಬ್ಬಿಣದ ಸಲಾಕೆ"],
+    "none": ["none", "no weapon", "without weapon"],
+    "unknown": ["unknown", "unspecified"]
+  },
+  "target_type": {
+    "atm": ["atm", "cash machine", "bank kiosk", "cash point", "ಎಟಿಎಂ"],
+    "bank": ["bank", "locker", "vault", "cooperative", "ಬ್ಯಾಂಕ್"],
+    "shop": ["shop", "store", "showroom", "jewellery", "retail", "outlet", "ಅಂಗಡಿ"],
+    "residence": ["house", "home", "residence", "flat", "apartment", "villa", "ಮನೆ"],
+    "individual": ["individual", "pedestrian", "person", "victim", "walker"],
+    "vehicle": ["vehicle", "car", "bike", "scooter", "lorry", "truck"]
+  },
+  "time_of_day_slot": {
+    "morning": ["morning", "sunrise", "early morning", "ಬೆಳಿಗ್ಗೆ"],
+    "afternoon": ["afternoon", "midday", "noon", "ಮಧ್ಯಾಹ್ನ"],
+    "evening": ["evening", "dusk", "sunset", "ಸಂಜೆ"],
+    "night": ["night", "midnight", "dark", "ರಾತ್ರಿ"],
+    "late_night": ["late night", "wee hours", "post midnight"]
+  },
+  "crime_method": {
+    "forced_entry": ["forced", "broke", "lock", "smashed", "drilled", "ಶೀಟಿಂಗ್", "ಮುರಿದು"],
+    "stealth": ["stealth", "slip", "silent", "quiet", "pocket", "pickpocket", "ಕಳ್ಳತನ"],
+    "deception": ["deception", "fraud", "scam", "pretend", "fake", "cheat", "ಮೋಸ"],
+    "confrontation": ["confrontation", "assault", "threat", "rob", "snatch", "ದರೋಡೆ"],
+    "cyber": ["cyber", "online", "otp", "phishing", "link", "links", "hack", "hacked", "hacks", "website"]
+  },
+  "entry_method": {
+    "rear_window": ["rear window", "back window", "window lock"],
+    "front_door": ["front door", "main door", "door lock"],
+    "atm": ["atm door", "atm lock", "kiosk door"],
+    "online": ["online", "internet", "website", "application"],
+    "direct": ["direct", "confront", "open", "road", "street"]
+  },
+  "escape_method": {
+    "foot": ["foot", "run", "walk", "ran", "escaped on foot"],
+    "bike": ["bike", "scooter", "motorcycle", "two wheeler", "ದ್ವಿಚಕ್ರ ವಾಹನ"],
+    "car": ["car", "taxi", "cab", "four wheeler", "ಕಾರು"],
+    "auto": ["auto", "rickshaw", "autorickshaw", "ಆಟೋ"]
+  },
+  "gang_involved": {
+    "true": ["gang", "group", "accomplices", "suspects", "criminals", "trio", "duo", "ಗುಂಪು"]
+  },
+  "crime_type": {
+    "murder": ["murder", "kill", "homicide", "assassinate", "ಕೊಲೆ"],
+    "robbery": ["robbery", "rob", "mug", "dacoity", "ದರೋಡೆ"],
+    "burglary": ["burglary", "break-in", "house break", "ಕನ್ನಗಳ್ಳತನ"],
+    "theft": ["theft", "steal", "pickpocket", "ಕಳ್ಳತನ"],
+    "chain_snatching": ["chain", "snatch", "gold chain", "necklace snatching"],
+    "vehicle_theft": ["vehicle theft", "car theft", "bike theft", "auto theft"],
+    "cyber_crime": ["cyber", "online fraud", "phishing", "scam"],
+    "atm_fraud": ["atm fraud", "atm theft", "card skimming"]
+  },
+  "district": {
+    "bengaluru": ["bengaluru", "bangalore", "blr", "ಬೆಂಗಳೂರು"],
+    "mysuru": ["mysuru", "mysore", "mys", "ಮೈಸೂರು"],
+    "hubballi": ["hubli", "hubballi", "dharwad", "ಹುಬ್ಬಳ್ಳಿ"],
+    "mangaluru": ["mangalore", "mangaluru", "mng", "ಮಂಗಳೂರು"],
+    "belagavi": ["belgaum", "belagavi", "ಬೆಳಗಾವಿ"],
+    "shimoga": ["shimoga", "shivamogga", "ಶಿವಮೊಗ್ಗ"],
+    "gulbarga": ["gulbarga", "kalaburagi", "ಕಲಬುರಗಿ"]
+  }
+}

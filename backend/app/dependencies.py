@@ -13,21 +13,28 @@ from app.database import get_db_session
 from app.core.security import decode_access_token
 from app.models.user import User, UserRole
 
-security = HTTPBearer(auto_error=True)
+security = HTTPBearer(auto_error=False)
 
 # Shorthand type alias used across all routers
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
     db: DbSession,
 ) -> User:
     """
     Validate Bearer token and return the authenticated User.
-    Raises 401 if token is invalid/expired, 403 if account inactive.
+    Raises 401 if token is missing/invalid/expired, 403 if account inactive.
     """
     from app.repositories.user_repo import UserRepository
+
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials were not provided",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     payload = decode_access_token(credentials.credentials)
     if payload is None:
@@ -36,6 +43,7 @@ async def get_current_user(
             detail="Invalid or expired access token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
 
     user_id: str | None = payload.get("sub")
     if not user_id:

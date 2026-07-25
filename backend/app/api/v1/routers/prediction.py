@@ -113,11 +113,15 @@ async def get_investigation_priority_queue(
     return await service.repo.get_investigation_queue()
 
 
+from app.core.cache import cache_response
+
+
 @router.get(
     "/statistics",
     response_model=PredictionStatisticsResponse,
     summary="Get Prediction Performance Statistics"
 )
+@cache_response(ttl_seconds=600, namespace="predictions")
 async def get_prediction_statistics(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user)

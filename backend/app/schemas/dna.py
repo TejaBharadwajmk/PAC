@@ -91,6 +91,7 @@ class SimilaritySearchRequest(BaseModel):
     Phase 1 (pre-filter): crime_type, district, time_of_day_slot
     Phase 2 (ANN): query_text embedded → cosine similarity
     Phase 3 (feature): hybrid score + explanation
+    Phase 5 (optional): per-request signal weight overrides
     """
     query_text: str = Field(
         ...,
@@ -113,6 +114,25 @@ class SimilaritySearchRequest(BaseModel):
     min_similarity: float = Field(
         default=0.50, ge=0.0, le=1.0,
         description="Minimum hybrid similarity score threshold"
+    )
+    # Per-request signal weight overrides (Phase 5)
+    # If omitted, server-side defaults from settings are used.
+    # Weights are automatically renormalized by HybridRankEngine.
+    semantic_weight: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Override semantic signal weight (default from HYBRID_SEMANTIC_WEIGHT env)"
+    )
+    fts_weight: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Override full-text search signal weight (default from HYBRID_FTS_WEIGHT env)"
+    )
+    mo_weight: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Override MO feature signal weight (default from HYBRID_MO_WEIGHT env)"
+    )
+    include_debug: bool = Field(
+        default=False,
+        description="Include diagnostic debug block in response (signal weights, active signals)"
     )
 
 
@@ -138,7 +158,7 @@ class SimilarityResult(BaseModel):
 
     # Scores — all from 0.0 to 1.0
     similarity_score: float = Field(
-        description="Hybrid score: 0.70×semantic + 0.30×feature"
+        description="Hybrid score: weighted combination of semantic + fts + mo"
     )
     semantic_similarity: float = Field(
         description="Cosine similarity of MO text embeddings"
@@ -147,13 +167,31 @@ class SimilarityResult(BaseModel):
         description="Structured MO feature overlap score"
     )
 
+    # Extended Score Parameters (Backward Compatible)
+    final_score: Optional[float] = None
+    semantic_score: Optional[float] = None
+    fts_score: Optional[float] = None
+    mo_score: Optional[float] = None
+
     # Explainability
     matched_features: List[str] = Field(
         default_factory=list,
         description="List of MO features that matched: crime_method, target_type, etc.",
     )
+    missing_features: List[str] = Field(
+        default_factory=list,
+        description="List of MO features that were expected but missing/mismatched from candidate",
+    )
     explanation: str = Field(
         description="Human-readable explanation of why crimes are similar"
+    )
+    explanations: List[str] = Field(
+        default_factory=list,
+        description="List of structured explanations/bullet reasons"
+    )
+    matched_terms: List[str] = Field(
+        default_factory=list,
+        description="Exact FTS terms that triggered the match"
     )
 
     # DNA intelligence fields (for display)
@@ -162,6 +200,24 @@ class SimilarityResult(BaseModel):
     planning_level: Optional[str] = None
     gang_involved: bool = False
     time_of_day_slot: Optional[str] = None
+
+
+class SearchDebugInfo(BaseModel):
+    """
+    Optional diagnostics block returned when include_debug=true.
+
+    Contains the normalized signal weights actually used during
+    rank fusion, plus a list of which signals were active.
+    """
+    active_signals: List[str] = Field(
+        description="Signal names that contributed to rank fusion (inactive signals excluded)"
+    )
+    normalized_weights: dict = Field(
+        description="Effective normalized weight per active signal after redistribution"
+    )
+    configured_weights: dict = Field(
+        description="Raw configured weights per signal (before redistribution)"
+    )
 
 
 class SimilaritySearchResponse(BaseModel):
@@ -174,6 +230,10 @@ class SimilaritySearchResponse(BaseModel):
         description="Number of COMPLETED DNA records searched before ranking"
     )
     filters_applied: dict = Field(default_factory=dict)
+    debug: Optional[SearchDebugInfo] = Field(
+        None,
+        description="Signal diagnostics (only present when include_debug=true in request)"
+    )
 
 
 # ── DNA Pipeline Stats ─────────────────────────────────────

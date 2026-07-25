@@ -29,6 +29,34 @@ from app.models.user import UserRole
 router = APIRouter()
 
 
+@router.get(
+    "/my-cases",
+    response_model=PaginatedResponse[CrimeListItem],
+    summary="My registered cases",
+    description="Returns crimes registered by the currently authenticated officer, paginated.",
+)
+async def my_cases(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: DbSession = ...,
+    current_user: CurrentUser = ...,
+):
+    service = CrimeService(db)
+    crimes, total = await service.repo.get_by_registered_user(
+        user_id=current_user.id,
+        skip=(page - 1) * page_size,
+        limit=page_size,
+    )
+    return PaginatedResponse(
+        items=[CrimeListItem.model_validate(c) for c in crimes],
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_next=(page * page_size) < total,
+        has_prev=page > 1,
+    )
+
+
 @router.post(
     "/",
     response_model=CrimeResponse,
@@ -48,11 +76,18 @@ async def register_crime(
 ):
     service = CrimeService(db)
     crime = await service.register_crime(data, current_user)
-    # Enqueue DNA generation and Neo4j graph sync as background tasks.
-    # Runs AFTER the 201 response is sent to the client.
+    # Enqueue DNA generation and Neo4j graph sync via dispatch_task.
+    # Runs in Celery pac_worker if available, or inline BackgroundTasks fallback.
     from app.services.graph_service import sync_crime_to_graph
-    background_tasks.add_task(DNAService(None).generate, crime.id)
+    from app.core.task_dispatcher import dispatch_task
+    from app.tasks import task_generate_crime_dna
+
+    from app.core.cache import invalidate_cache_pattern
+
+    dispatch_task(task_generate_crime_dna, DNAService(None).generate, background_tasks, crime.id)
     background_tasks.add_task(sync_crime_to_graph, crime.id)
+    background_tasks.add_task(invalidate_cache_pattern, "pac:cache:geo:*")
+    background_tasks.add_task(invalidate_cache_pattern, "pac:cache:predictions:*")
     return crime
 
 

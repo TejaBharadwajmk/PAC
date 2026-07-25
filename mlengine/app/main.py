@@ -18,18 +18,20 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
+import os
+
 logger = logging.getLogger(__name__)
 
 # ── Model Singleton ────────────────────────────────────────────
 # Loaded once at startup. SentenceTransformer inference is thread-safe.
 _model = None
 _model_load_time: Optional[float] = None
-MODEL_NAME = "all-MiniLM-L6-v2"
-EMBEDDING_DIM = 384
+MODEL_NAME = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
 
 
 def _load_model():
-    """Load Sentence Transformer model into process memory."""
+    """Load Sentence Transformer model into process memory and run startup validation."""
     global _model, _model_load_time
     try:
         from sentence_transformers import SentenceTransformer
@@ -37,9 +39,45 @@ def _load_model():
         t0 = time.time()
         _model = SentenceTransformer(MODEL_NAME)
         _model_load_time = time.time() - t0
-        logger.info(f"Model loaded in {_model_load_time:.2f}s | dim={EMBEDDING_DIM}")
+        
+        # Run startup validation: generate test embedding
+        test_vector = _model.encode(["validation test"], show_progress_bar=False)
+        actual_dim = len(test_vector[0])
+        
+        # Verify dimension matches config
+        if actual_dim != EMBEDDING_DIM:
+            error_msg = (
+                f"CRITICAL CONFIGURATION ERROR: Expected embedding dimension {EMBEDDING_DIM}, "
+                f"but model '{MODEL_NAME}' returned dimension {actual_dim}."
+            )
+            logger.critical(error_msg)
+            raise ValueError(error_msg)
+            
+        device = getattr(_model, "device", "cpu")
+        
+        logger.info("=========================================")
+        logger.info("PAC ML Engine Startup Configuration:")
+        logger.info(f"  Embedding Model  : {MODEL_NAME}")
+        logger.info(f"  Expected Dim     : {EMBEDDING_DIM}")
+        logger.info(f"  Actual Dim       : {actual_dim}")
+        logger.info(f"  Device           : {device}")
+        logger.info(f"  Cache Status     : Cached (Local Build)")
+        logger.info(f"  Validation Result: PASS")
+        logger.info("=========================================")
+        
+        # Ensure stdout visibility in Docker logs
+        print("=========================================")
+        print("PAC ML Engine Startup Configuration:")
+        print(f"  Embedding Model  : {MODEL_NAME}")
+        print(f"  Expected Dim     : {EMBEDDING_DIM}")
+        print(f"  Actual Dim       : {actual_dim}")
+        print(f"  Device           : {device}")
+        print(f"  Cache Status     : Cached (Local Build)")
+        print(f"  Validation Result: PASS")
+        print("=========================================")
+        
     except Exception as e:
-        logger.critical(f"Failed to load model {MODEL_NAME}: {e}")
+        logger.critical(f"Failed to load/validate model {MODEL_NAME}: {e}")
         raise
 
 
@@ -86,11 +124,10 @@ class EmbedResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    service: str
     model: str
-    model_loaded: bool
-    embedding_dim: int
-    model_load_time_s: Optional[float]
+    dimension: int
+    device: str
+    ready: bool
 
 
 # ── Endpoints ──────────────────────────────────────────────────
@@ -100,11 +137,10 @@ async def health():
     """Liveness + model readiness check."""
     return HealthResponse(
         status="healthy" if _model is not None else "degraded",
-        service="PAC ML Engine",
         model=MODEL_NAME,
-        model_loaded=_model is not None,
-        embedding_dim=EMBEDDING_DIM,
-        model_load_time_s=_model_load_time,
+        dimension=EMBEDDING_DIM,
+        device=str(getattr(_model, "device", "cpu")),
+        ready=_model is not None,
     )
 
 

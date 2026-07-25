@@ -127,15 +127,15 @@ class GeminiProvider(BaseLLM):
 # ── Ollama Provider ────────────────────────────────────────────────────────────
 
 class OllamaProvider(BaseLLM):
-    """Self-hosted Ollama provider (Mistral / Llama / Phi etc.)."""
+    """Self-hosted, air-gapped Ollama provider (Mistral / Llama-3 / Phi etc.)."""
 
     def __init__(self) -> None:
-        import httpx  # already in requirements
+        import httpx
         self._base_url = settings.OLLAMA_URL.rstrip("/")
         self._model = settings.OLLAMA_MODEL
-        self._client_cls = httpx.AsyncClient
+        self._timeout = getattr(settings, "OLLAMA_TIMEOUT", 60.0)
         logger.info(
-            f"OllamaProvider initialised — url={self._base_url}, model={self._model}"
+            f"OllamaProvider initialised — url={self._base_url}, model={self._model}, timeout={self._timeout}s"
         )
 
     async def generate(
@@ -148,20 +148,51 @@ class OllamaProvider(BaseLLM):
     ) -> str:
         import httpx
 
-        payload = {
+        # 1. Try structured chat endpoint first (/api/chat)
+        chat_payload = {
             "model": self._model,
-            "prompt": f"{system_prompt}\n\n{user_message}",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
             "stream": False,
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens,
             },
         }
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(f"{self._base_url}/api/generate", json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-        return data.get("response", "")
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(f"{self._base_url}/api/chat", json=chat_payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    msg = data.get("message", {})
+                    return msg.get("content", "")
+        except Exception as chat_exc:
+            logger.debug(f"Ollama /api/chat fallback to /api/generate: {chat_exc}")
+
+        # 2. Fallback to raw prompt endpoint (/api/generate)
+        gen_payload = {
+            "model": self._model,
+            "prompt": f"{system_prompt}\n\n---\n\n{user_message}",
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(f"{self._base_url}/api/generate", json=gen_payload)
+                resp.raise_for_status()
+                data = resp.json()
+                return data.get("response", "")
+        except Exception as exc:
+            logger.error(f"Ollama generation failed: {exc}")
+            raise RuntimeError(
+                f"Air-gapped Ollama local LLM service error ({self._base_url}): {exc}"
+            ) from exc
 
     async def health_check(self) -> Dict[str, Any]:
         import httpx
@@ -170,15 +201,24 @@ class OllamaProvider(BaseLLM):
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(f"{self._base_url}/api/tags")
                 resp.raise_for_status()
-                models = [m["name"] for m in resp.json().get("models", [])]
+                models = [m.get("name", "") for m in resp.json().get("models", [])]
+            
+            is_model_present = any(self._model in m for m in models)
             return {
                 "provider": "ollama",
                 "model": self._model,
-                "status": "healthy",
+                "status": "healthy" if (models and is_model_present) else "degraded",
                 "available_models": models,
+                "air_gapped": True,
             }
         except Exception as exc:
-            return {"provider": "ollama", "status": "unhealthy", "error": str(exc)}
+            return {
+                "provider": "ollama",
+                "model": self._model,
+                "status": "unhealthy",
+                "error": str(exc),
+                "air_gapped": True,
+            }
 
 
 # ── Mock Provider (Tests) ──────────────────────────────────────────────────────

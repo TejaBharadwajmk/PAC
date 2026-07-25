@@ -119,14 +119,22 @@ class GeoService:
                 )
             )
 
-        # Trigger predictive calculations updates for the district/hotspots
+        # Trigger predictive calculations updates for the district/hotspots in a dedicated session
         try:
-            from app.services.prediction_service import PredictionService
-            pred_svc = PredictionService(self.db)
             import asyncio
-            if district:
-                asyncio.ensure_future(pred_svc.generate_district_prediction(district))
-            asyncio.ensure_future(pred_svc.generate_hotspot_predictions())
+            async def _background_predictions(dist: Optional[str]):
+                from app.database import AsyncSessionLocal
+                from app.services.prediction_service import PredictionService
+                try:
+                    async with AsyncSessionLocal() as bg_session:
+                        pred_svc = PredictionService(bg_session)
+                        if dist:
+                            await pred_svc.generate_district_prediction(dist)
+                        await pred_svc.generate_hotspot_predictions()
+                except Exception as bg_exc:
+                    logger.warning(f"Background prediction update error (non-fatal): {bg_exc}")
+
+            asyncio.ensure_future(_background_predictions(district))
         except Exception as e:
             logger.error(f"Failed to trigger district/hotspot prediction updates: {e}")
 

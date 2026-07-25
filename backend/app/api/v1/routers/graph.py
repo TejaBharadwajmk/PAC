@@ -123,12 +123,16 @@ async def get_crime_node(
     return node
 
 
+from app.core.cache import cache_response
+
+
 @router.get(
     "/network/{criminal_id}",
     response_model=GraphNetworkResponse,
     summary="Get criminal co-offending network",
     description="Traverses co-offenders and associated crimes/victims up to a specified depth limit.",
 )
+@cache_response(ttl_seconds=300, namespace="graph")
 async def get_criminal_network(
     criminal_id: UUID,
     db: DbSession,

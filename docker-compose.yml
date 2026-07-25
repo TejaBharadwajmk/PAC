@@ -2,23 +2,7 @@ version: "3.8"
 
 # ============================================================
 # PAC — PoliceIT Analytics Core
-# Docker Compose — Full Stack (Phase 2.1)
-# ============================================================
-#
-# Start order:
-#   1. postgres   (pgvector + PostGIS)
-#   2. redis
-#   3. neo4j
-#   4. mlengine   (SentenceTransformer — depends on postgres healthy)
-#   5. backend    (FastAPI — depends on postgres + redis + mlengine healthy)
-#   6. frontend   (React — depends on backend)
-#
-# Usage:
-#   docker-compose up --build -d          # first time
-#   docker-compose up -d                  # subsequent starts
-#   docker-compose logs -f backend        # follow logs
-#   docker-compose exec backend python scripts/seed_data.py
-#   docker-compose exec backend alembic upgrade head
+# Docker Compose — Full Stack Production Architecture
 # ============================================================
 
 services:
@@ -46,7 +30,7 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # ── Redis 7 (cache) ─────────────────────────────────────
+  # ── Redis 7 (cache & message broker) ───────────────────
   redis:
     image: redis:7-alpine
     container_name: pac_redis
@@ -87,8 +71,6 @@ services:
     restart: unless-stopped
 
   # ── ML Engine (Sentence Transformers) ──────────────────
-  # Model is pre-downloaded at build time into the ml_models_cache volume.
-  # healthcheck uses /health endpoint which reports model readiness.
   mlengine:
     build:
       context: ./mlengine
@@ -110,12 +92,10 @@ services:
       interval: 20s
       timeout: 10s
       retries: 10
-      start_period: 90s    # model loading can take 5-30s on first run
+      start_period: 90s
     restart: unless-stopped
 
   # ── FastAPI Backend ──────────────────────────────────────
-  # Runs Alembic migrations before starting uvicorn.
-  # Depends on mlengine being healthy so DNA background tasks work immediately.
   backend:
     build:
       context: ./backend
@@ -134,13 +114,12 @@ services:
       - ./backend/.env
     volumes:
       - ./backend:/app
-    # Run migrations then start server
     command: >
       sh -c "
         echo '>>> Running Alembic migrations...' &&
         alembic upgrade head &&
-        echo '>>> Migrations complete. Starting uvicorn...' &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+        echo '>>> Migrations complete. Starting uvicorn production server...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
       "
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
@@ -150,6 +129,84 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # ── Ollama Local LLM (Air-Gapped Confidentiality) ─────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pac_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ── Celery Background Worker (DNA & Profile Tasks) ───────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pac_worker
+    command: celery -A app.celery_app.celery_app worker --loglevel=info -c 4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mlengine:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.celery_app.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ── Celery Beat (Scheduled CCTNS Polling Cron) ───────────
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pac_beat
+    command: celery -A app.celery_app.celery_app beat --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+
+  # ── Next.js Frontend ─────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pac_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - INTERNAL_BACKEND_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    restart: unless-stopped
 
 
 volumes:
@@ -163,3 +220,5 @@ volumes:
     name: pac_redis_data
   ml_models_cache:
     name: pac_ml_models_cache
+  ollama_data:
+    name: pac_ollama_data

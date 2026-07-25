@@ -199,27 +199,19 @@ class DNARepository:
         self,
         query_embedding: List[float],
         *,
+        query_text: Optional[str] = None,
         exclude_crime_id: Optional[UUID] = None,
         limit: int = 50,             # over-fetch for Python re-ranking
         max_distance: float = 0.50,  # 1.0 - min_similarity
         district_filter: Optional[str] = None,
         crime_type_filter: Optional[str] = None,
         time_slot_filter: Optional[str] = None,
-    ) -> List[Tuple[dict, float]]:
+    ) -> List[Tuple[dict, float, float]]:
         """
-        Phase 2 of hybrid search: pgvector ANN cosine similarity.
+        Phase 1 + 2 of hybrid search: pgvector ANN cosine similarity + FTS.
 
-        Returns list of (row_dict, semantic_similarity) pairs, sorted
-        best-first. Caller (SimilarityService) applies Phase 3 re-ranking.
-
-        Args:
-            query_embedding: L2-normalised 384-dim vector
-            exclude_crime_id: Skip this crime (the source crime)
-            limit: Number of ANN candidates to fetch (over-fetch ×5 of final)
-            max_distance: cosine DISTANCE threshold (1 - min_similarity)
-            district_filter: Optional WHERE district =
-            crime_type_filter: Optional WHERE crime_type =
-            time_slot_filter: Optional WHERE time_of_day_slot =
+        Returns list of (row_dict, semantic_similarity, fts_score) tuples, sorted
+        best-first by semantic similarity. Caller applies Phase 3 re-ranking.
         """
         conditions = ["d.status = 'completed'", "d.embedding IS NOT NULL"]
         params: dict = {
@@ -246,6 +238,68 @@ class DNARepository:
 
         where_clause = " AND ".join(conditions)
 
+        if query_text and query_text.strip():
+            params["query_text"] = query_text.strip()
+            
+            # Select weights: Description/MO = A, FIR = B, Address = C, District/Station = D
+            # Modus Operandi & Suspects are aggregated using COALESCE subqueries
+            fts_select = """
+                COALESCE(ts_rank_cd(
+                    setweight(to_tsvector('simple', coalesce(c.description, '')), 'A') ||
+                    setweight(to_tsvector('simple', coalesce(c.mo_text, '')), 'A') ||
+                    setweight(to_tsvector('simple', coalesce(c.fir_number, '')), 'B') ||
+                    setweight(to_tsvector('simple', coalesce(c.location_address, '')), 'C') ||
+                    setweight(to_tsvector('simple', coalesce(c.police_station, '')), 'D') ||
+                    setweight(to_tsvector('simple', coalesce(c.district, '')), 'D'),
+                    websearch_to_tsquery('simple', :query_text)
+                ), 0.0) +
+                COALESCE((
+                    SELECT ts_rank_cd(
+                        setweight(to_tsvector('simple', coalesce(mo.weapon_used, '')), 'B') ||
+                        setweight(to_tsvector('simple', coalesce(mo.crime_method, '')), 'B') ||
+                        setweight(to_tsvector('simple', coalesce(mo.entry_method, '')), 'C') ||
+                        setweight(to_tsvector('simple', coalesce(mo.target_type, '')), 'C') ||
+                        setweight(to_tsvector('simple', coalesce(mo.escape_method, '')), 'D') ||
+                        setweight(to_tsvector('simple', coalesce(mo.tools_used::text, '')), 'C') ||
+                        setweight(to_tsvector('simple', coalesce(mo.modus_operandi_tags::text, '')), 'B'),
+                        websearch_to_tsquery('simple', :query_text)
+                    )
+                    FROM crime_mo mo WHERE mo.crime_id = c.id
+                ), 0.0) +
+                COALESCE((
+                    SELECT MAX(ts_rank_cd(
+                        setweight(to_tsvector('simple', coalesce(cr.name, '')), 'A') ||
+                        setweight(to_tsvector('simple', coalesce(cr.gang_name, '')), 'B') ||
+                        setweight(to_tsvector('simple', coalesce(cr.contact_number, '')), 'B') ||
+                        setweight(to_tsvector('simple', coalesce(cr.aliases::text, '')), 'B') ||
+                        setweight(to_tsvector('simple', coalesce(cr.address, '')), 'C'),
+                        websearch_to_tsquery('simple', :query_text)
+                    ))
+                    FROM crime_criminals cc
+                    JOIN criminals cr ON cr.id = cc.criminal_id
+                    WHERE cc.crime_id = c.id
+                ), 0.0) AS fts_score
+            """
+            
+            # Hybrid WHERE condition: matches vector OR text matches
+            fts_where = """
+                AND (
+                    (d.embedding <=> CAST(:embedding AS vector)) <= :max_distance
+                    OR
+                    (
+                        setweight(to_tsvector('simple', coalesce(c.description, '')), 'A') ||
+                        setweight(to_tsvector('simple', coalesce(c.mo_text, '')), 'A') ||
+                        setweight(to_tsvector('simple', coalesce(c.fir_number, '')), 'B') ||
+                        setweight(to_tsvector('simple', coalesce(c.location_address, '')), 'C') ||
+                        setweight(to_tsvector('simple', coalesce(c.police_station, '')), 'D') ||
+                        setweight(to_tsvector('simple', coalesce(c.district, '')), 'D')
+                    ) @@ websearch_to_tsquery('simple', :query_text)
+                )
+            """
+        else:
+            fts_select = "0.0 AS fts_score"
+            fts_where = "AND (d.embedding <=> CAST(:embedding AS vector)) <= :max_distance"
+
         sql = text(f"""
             SELECT
                 d.crime_id,
@@ -270,11 +324,12 @@ class DNARepository:
                 c.status    AS crime_status,
                 c.mo_text,
                 c.occurred_at,
-                (1 - (d.embedding <=> CAST(:embedding AS vector))) AS semantic_similarity
+                (1 - (d.embedding <=> CAST(:embedding AS vector))) AS semantic_similarity,
+                {fts_select}
             FROM crime_dna d
             JOIN crimes c ON d.crime_id = c.id
             WHERE {where_clause}
-              AND (d.embedding <=> CAST(:embedding AS vector)) <= :max_distance
+              {fts_where}
             ORDER BY d.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
@@ -283,7 +338,7 @@ class DNARepository:
         rows = result.mappings().fetchall()
 
         return [
-            (dict(row), float(row["semantic_similarity"]))
+            (dict(row), float(row["semantic_similarity"]), float(row["fts_score"]))
             for row in rows
         ]
 

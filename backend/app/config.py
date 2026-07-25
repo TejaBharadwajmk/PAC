@@ -33,8 +33,9 @@ class Settings(BaseSettings):
     NEO4J_USERNAME: str = "neo4j"
     NEO4J_PASSWORD: str = "pac_neo4j_password_2024"
 
-    # ── Redis ──────────────────────────────────────────────
+    # ── Redis & Task Queue ──────────────────────────────────
     REDIS_URL: str = "redis://redis:6379/0"
+    CELERY_ENABLED: bool = True
 
     # ── ML Engine ──────────────────────────────────────────
     MLENGINE_URL: str = "http://mlengine:5001"
@@ -42,6 +43,7 @@ class Settings(BaseSettings):
     # ── Ollama (AI Assistant only) ─────────────────────────
     OLLAMA_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "mistral"
+    OLLAMA_TIMEOUT: float = 60.0
 
     # ── AI Investigation Assistant (Phase 4.1) ─────────────
     # Provider: 'gemini' | 'ollama' | 'mock'
@@ -52,6 +54,22 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     # Max ranked evidence items passed to the LLM context
     EVIDENCE_RANKER_TOP_N: int = 10
+
+    # ── Hybrid Retrieval Ranking Weights (Phase 1-3) ──────
+    HYBRID_SEMANTIC_WEIGHT: float = 0.50
+    HYBRID_FTS_WEIGHT: float = 0.30
+    HYBRID_MO_WEIGHT: float = 0.20
+
+    # ── MO Feature-Specific Similarity Weights ────────────
+    MO_CRIME_TYPE_WEIGHT: float = 0.15
+    MO_CRIME_METHOD_WEIGHT: float = 0.15
+    MO_WEAPON_WEIGHT: float = 0.15
+    MO_ENTRY_METHOD_WEIGHT: float = 0.12
+    MO_TARGET_WEIGHT: float = 0.12
+    MO_ESCAPE_WEIGHT: float = 0.08
+    MO_TIME_WEIGHT: float = 0.08
+    MO_GANG_WEIGHT: float = 0.08
+    MO_DISTRICT_WEIGHT: float = 0.07
 
     # ── CORS ───────────────────────────────────────────────
     CORS_ORIGINS: List[str] = []

@@ -41,7 +41,43 @@ async def get_criminal_behavior_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Criminal profile not found: {criminal_id}",
         )
-    return profile.detailed_metrics
+    
+    d = profile.detailed_metrics or {}
+    pat = d.get("patterns", {})
+    geo = d.get("geo_metrics", {})
+    net = d.get("network_metrics", {})
+    return BehaviourProfileResponse(
+        summary=profile.profile_summary or d.get("profile_summary", "No summary available"),
+        scores={
+            "risk_score": profile.risk_score or 0.0,
+            "risk_level": profile.risk_level or "LOW",
+            "violence_score": getattr(profile, "violence_score", 0.0) or 0.0,
+            "gang_affiliation_score": getattr(profile, "gang_affiliation_score", 0.0) or 0.0,
+            "behaviour_consistency_score": profile.behaviour_consistency_score or 0.0,
+            "serial_offender_probability": profile.serial_offender_probability or 0.0,
+            "behaviour_confidence_score": profile.behaviour_confidence_score or 0.0,
+        },
+        patterns={
+            "primary_crime_type": pat.get("primary_crime_type", "unknown"),
+            "preferred_time_slot": profile.preferred_time_of_day or pat.get("preferred_time_slot", "unknown"),
+            "preferred_day_of_week": profile.preferred_day_of_week or "unknown",
+            "preferred_season_month": profile.preferred_season_month or "unknown",
+            "preferred_escape_method": profile.preferred_escape_method or "unknown",
+            "preferred_target_type": pat.get("preferred_target_type", "unknown"),
+            "preferred_planning_level": profile.planning_level or "unknown",
+            "modus_operandi_tags": profile.preferred_modus_operandi or [],
+        },
+        network=net,
+        geo={
+            "operating_radius_km": profile.operating_radius_km or 0.0,
+            "preferred_district": geo.get("preferred_district", "unknown"),
+            "preferred_police_station": profile.preferred_police_station or "unknown",
+        },
+        evidence=d.get("evidence", []),
+        recommendations=d.get("recommendations", []),
+        detailed_metrics=d,
+    )
+
 
 
 @router.get(

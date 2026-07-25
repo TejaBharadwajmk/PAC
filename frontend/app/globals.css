@@ -1,0 +1,230 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+/* ── PAC CSS Variables ────────────────────────────────────────────────── */
+:root {
+  --background:       222 47% 5%;
+  --foreground:       210 40% 91%;
+  --card:             222 40% 10%;
+  --card-foreground:  210 40% 91%;
+  --popover:          222 40% 13%;
+  --popover-foreground: 210 40% 91%;
+  --primary:          213 93% 53%;
+  --primary-foreground: 222 47% 5%;
+  --secondary:        217 25% 16%;
+  --secondary-foreground: 210 40% 91%;
+  --muted:            217 25% 16%;
+  --muted-foreground: 215 20% 55%;
+  --accent:           217 25% 16%;
+  --accent-foreground: 210 40% 91%;
+  --destructive:      0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border:           217 25% 20%;
+  --input:            217 25% 16%;
+  --ring:             213 93% 53%;
+  --radius:           0.375rem;
+
+  /* Sidebar */
+  --sidebar-width:        240px;
+  --sidebar-collapsed-width: 64px;
+  --topbar-height:        56px;
+}
+
+/* ── Base Reset ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: #0d1117;
+  color: #e6edf3;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* ── Selection ────────────────────────────────────────────────────────── */
+::selection { background: rgba(88,166,255,0.25); color: #e6edf3; }
+
+/* ── Focus Ring ───────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Typography Utilities ────────────────────────────────────────────── */
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ── PAC Card ─────────────────────────────────────────────────────────── */
+.pac-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.pac-card-elevated {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(1,4,9,0.6);
+}
+
+/* ── Shimmer Skeleton ─────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #161b22 25%,
+    #21262d 50%,
+    #161b22 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ── Fade In ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
+/* ── Slide In ─────────────────────────────────────────────────────────── */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in { animation: slideIn 0.25s ease-out; }
+
+/* ── Risk Level Colours ───────────────────────────────────────────────── */
+.risk-critical { color: #f85149; }
+.risk-high     { color: #e98d30; }
+.risk-moderate { color: #d29922; }
+.risk-low      { color: #3fb950; }
+
+.risk-bg-critical { background: rgba(248,81,73,0.15);  border: 1px solid rgba(248,81,73,0.4); }
+.risk-bg-high     { background: rgba(233,141,48,0.15); border: 1px solid rgba(233,141,48,0.4); }
+.risk-bg-moderate { background: rgba(210,153,34,0.15); border: 1px solid rgba(210,153,34,0.4); }
+.risk-bg-low      { background: rgba(63,185,80,0.15);  border: 1px solid rgba(63,185,80,0.4); }
+
+/* ── App Shell Layout ─────────────────────────────────────────────────── */
+.app-shell {
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-areas:
+    "topbar  topbar"
+    "sidebar content";
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-shell.sidebar-collapsed {
+  grid-template-columns: var(--sidebar-collapsed-width) 1fr;
+}
+
+.app-shell-topbar  { grid-area: topbar; }
+.app-shell-sidebar { grid-area: sidebar; overflow-y: auto; }
+.app-shell-content { grid-area: content; overflow-y: auto; }
+
+/* ── Intelligence Panel Dividers ─────────────────────────────────────── */
+.intel-divider {
+  border: none;
+  border-top: 1px solid #30363d;
+  margin: 12px 0;
+}
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+.pac-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.pac-table th {
+  background: #0d1117;
+  color: #8b949e;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-bottom: 1px solid #30363d;
+  white-space: nowrap;
+}
+.pac-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #21262d;
+  font-size: 13px;
+  color: #e6edf3;
+  vertical-align: middle;
+}
+.pac-table tbody tr {
+  transition: background 100ms;
+  cursor: pointer;
+}
+.pac-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+
+/* ── Map Container ────────────────────────────────────────────────────── */
+.map-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── AI Confidence Bar ────────────────────────────────────────────────── */
+.confidence-bar-track {
+  height: 4px;
+  background: #30363d;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ── Print Styles for Reports ─────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  .app-shell-sidebar,
+  .app-shell-topbar { display: none !important; }
+  .app-shell-content { overflow: visible; }
+  body { background: white; color: black; }
+}
+
+/* ── MapLibre Overrides ───────────────────────────────────────────────── */
+.maplibregl-ctrl-logo { display: none !important; }
+.maplibregl-ctrl-attrib { display: none !important; }
+.maplibregl-popup-content {
+  background: #21262d !important;
+  border: 1px solid #30363d !important;
+  color: #e6edf3 !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  box-shadow: 0 8px 24px rgba(1,4,9,0.8) !important;
+}
+.maplibregl-popup-tip { border-top-color: #30363d !important; }
