@@ -54,20 +54,20 @@ export default function AnalystDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <IntelCard
           title="Total Crimes"
-          value={recentCrimes?.total ?? "—"}
+          value={recentCrimes?.total ?? 0}
           icon={<BarChart2 size={15} />}
           severity="info"
         />
         <IntelCard
           title="Crime Clusters"
-          value={geoStats?.total_clusters ?? "—"}
+          value={geoStats?.total_hotspots_detected ?? 0}
           icon={<Map size={15} />}
           severity="moderate"
           href="/geo"
         />
         <IntelCard
           title="Avg Risk Score"
-          value={predStats ? scoreToPercent(avgRisk) : "—"}
+          value={predStats ? scoreToPercent(avgRisk) : "0%"}
           icon={<TrendingUp size={15} />}
           severity={avgRisk > 0.6 ? "high" : avgRisk > 0.3 ? "moderate" : "low"}
           href="/predictions"
@@ -81,10 +81,12 @@ export default function AnalystDashboard() {
         />
         <IntelCard
           title="Top District"
-          value={geoStats?.top_district ?? "—"}
+          value={geoStats?.top_hotspot_district ?? "None Detected"}
           icon={<Map size={15} />}
           severity="high"
         />
+
+
         <IntelCard
           title="Network Explorer"
           value="Active"

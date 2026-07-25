@@ -140,7 +140,18 @@ class RetrieverService:
 
     async def _retrieve_behaviour(self, ctx: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Retrieve Behaviour Profile for a criminal."""
+        from sqlalchemy import text
         criminal_id = ctx.get("criminal_id")
+        if not criminal_id:
+            try:
+                res = await self.db.execute(text("SELECT id FROM criminals WHERE is_repeat_offender = true ORDER BY previous_cases_count DESC LIMIT 1"))
+                row = res.mappings().first()
+                if row:
+                    criminal_id = str(row["id"])
+                    ctx["criminal_id"] = criminal_id
+            except Exception as exc:
+                logger.warning(f"Retriever criminal fallback error: {exc}")
+
         if not criminal_id:
             return None
 
@@ -182,6 +193,7 @@ class RetrieverService:
         criminal_id = ctx.get("criminal_id")
         if criminal_id:
             pred = await svc.get_or_generate_criminal_prediction(UUID(str(criminal_id)))
+
             if pred:
                 results["criminal_risk"] = {
                     "risk_level": pred.risk_level,

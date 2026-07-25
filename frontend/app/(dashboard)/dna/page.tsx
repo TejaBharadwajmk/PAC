@@ -16,23 +16,27 @@ export default function CrimeDnaPage() {
   const [moText, setMoText]         = useState("");
   const [district, setDistrict]     = useState("");
   const [crimeType, setCrimeType]   = useState<CrimeType | "">("");
-  const [minScore, setMinScore]     = useState(0.5);
+  const [minScore, setMinScore]     = useState(0.1);
+
   const [searching, setSearching]   = useState(false);
 
   // Search query
-  const { data: searchResults, refetch: runSearch, isFetching } = useQuery({
+  const { data: searchResponse, refetch: runSearch, isFetching } = useQuery({
     queryKey: ["similarity", "search", { moText, district, crimeType, minScore }],
     queryFn:  () =>
       similarityApi.search({
-        mo_text:           moText,
-        top_k:             12,
-        min_score:         minScore,
-        district_filter:   district || undefined,
-        crime_type_filter: (crimeType as CrimeType) || undefined,
+        query_text:     moText,
+        limit:          12,
+        min_similarity: minScore,
+        district:       district || undefined,
+        crime_type:     (crimeType as CrimeType) || undefined,
       }),
     enabled: false,
     staleTime: 0,
   });
+
+  const searchResults = searchResponse?.results;
+
 
   // Recent FIR list to check DNA status
   const { data: recentCrimes, isLoading: crimesLoading } = useQuery({

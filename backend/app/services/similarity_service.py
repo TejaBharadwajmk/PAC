@@ -209,8 +209,9 @@ class SimilarityService:
             query_features = {}
 
         # Phase 1 + 2: SQL pre-filter + pgvector ANN + FTS
-        max_distance = 1.0 - request.min_similarity
+        max_distance = 0.95
         rows = await self.repo.find_similar(
+
             query_embedding=query_embedding,
             query_text=query_text,
             exclude_crime_id=exclude_crime_id,

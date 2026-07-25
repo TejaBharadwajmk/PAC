@@ -155,10 +155,10 @@ export default function GeoIntelligencePage() {
                         </span>
                       </div>
                       <p className="text-[12px] font-semibold text-[#e6edf3]">
-                        {CRIME_TYPE_LABELS[h.dominant_type] ?? h.dominant_type}
+                        {CRIME_TYPE_LABELS[h.dominant_crime_type] ?? h.dominant_crime_type}
                       </p>
                       <p className="text-[11px] text-[#8b949e] font-mono">
-                        Radius: {Math.round(h.radius_m)}m
+                        Radius: {Math.round(h.radius_meters ?? 0)}m
                       </p>
                     </div>
                   ))}
@@ -181,11 +181,13 @@ export default function GeoIntelligencePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="p-2.5 bg-[#0d1117] rounded border border-[#30363d]">
                 <p className="text-[10px] text-[#8b949e] font-mono uppercase">Total Clusters</p>
-                <p className="text-[18px] font-mono font-bold text-[#d29922]">{stats?.total_clusters ?? "—"}</p>
+                <p className="text-[18px] font-mono font-bold text-[#d29922]">{stats?.total_hotspots_detected ?? hotspots?.length ?? 0}</p>
               </div>
               <div className="p-2.5 bg-[#0d1117] rounded border border-[#30363d]">
                 <p className="text-[10px] text-[#8b949e] font-mono uppercase">Avg Cluster Size</p>
-                <p className="text-[18px] font-mono font-bold text-[#58a6ff]">{stats?.avg_cluster_size ? Math.round(stats.avg_cluster_size) : "—"}</p>
+                <p className="text-[18px] font-mono font-bold text-[#58a6ff]">
+                  {stats ? Math.round(stats.total_clustered_crimes / (stats.total_hotspots_detected || 1)) : 0} FIRs
+                </p>
               </div>
             </div>
           </div>
@@ -214,11 +216,12 @@ export default function GeoIntelligencePage() {
                 </button>
               </div>
               <div className="text-[12px] text-[#c9d1d9] flex flex-col gap-1">
-                <p>Dominant Type: <strong className="text-[#e6edf3]">{CRIME_TYPE_LABELS[selectedHotspot.dominant_type]}</strong></p>
+                <p>Dominant Type: <strong className="text-[#e6edf3]">{CRIME_TYPE_LABELS[selectedHotspot.dominant_crime_type] ?? selectedHotspot.dominant_crime_type}</strong></p>
                 <p>Crime Count: <strong className="font-mono text-[#58a6ff]">{selectedHotspot.crime_count} FIRs</strong></p>
-                <p>Radius: <strong className="font-mono text-[#8b949e]">{Math.round(selectedHotspot.radius_m)} meters</strong></p>
+                <p>Radius: <strong className="font-mono text-[#8b949e]">{Math.round(selectedHotspot.radius_meters ?? 0)} meters</strong></p>
               </div>
             </div>
+
           ) : (
             <div className="pac-card text-center py-8 text-[12px] text-[#8b949e]">
               Click a cluster marker on the map to inspect spatial crime details.

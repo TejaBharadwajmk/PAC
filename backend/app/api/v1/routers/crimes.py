@@ -57,6 +57,7 @@ async def my_cases(
     )
 
 
+@router.post("")
 @router.post(
     "/",
     response_model=CrimeResponse,
@@ -88,15 +89,17 @@ async def register_crime(
     background_tasks.add_task(sync_crime_to_graph, crime.id)
     background_tasks.add_task(invalidate_cache_pattern, "pac:cache:geo:*")
     background_tasks.add_task(invalidate_cache_pattern, "pac:cache:predictions:*")
-    return crime
+    return CrimeResponse.model_validate(crime)
 
 
+@router.get("")
 @router.get(
     "/",
     response_model=PaginatedResponse[CrimeListItem],
     summary="List crimes",
     description="Paginated list of crimes with optional filters by district, type, status, severity, and date range.",
 )
+
 async def list_crimes(
     district: Optional[str] = Query(None, description="Filter by district name"),
     crime_type: Optional[CrimeType] = Query(None),
@@ -143,21 +146,27 @@ async def get_crime_by_fir(
     current_user: CurrentUser,
 ):
     service = CrimeService(db)
-    return await service.get_crime_by_fir(fir_number)
+    crime = await service.get_crime_by_fir(fir_number)
+    return CrimeResponse.model_validate(crime)
 
 
 @router.get(
     "/{crime_id}",
     response_model=CrimeResponse,
-    summary="Get crime by ID",
+    summary="Get crime by UUID or FIR Number",
 )
 async def get_crime(
-    crime_id: UUID,
+    crime_id: str,
     db: DbSession,
     current_user: CurrentUser,
 ):
     service = CrimeService(db)
-    return await service.get_crime(crime_id)
+    try:
+        uuid_val = UUID(crime_id)
+        crime = await service.get_crime(uuid_val)
+    except ValueError:
+        crime = await service.get_crime_by_fir(crime_id)
+    return CrimeResponse.model_validate(crime)
 
 
 @router.put(
@@ -176,7 +185,8 @@ async def update_crime(
     updated_crime = await service.update_crime(crime_id, data, current_user)
     from app.services.graph_service import sync_crime_to_graph
     background_tasks.add_task(sync_crime_to_graph, crime_id)
-    return updated_crime
+    return CrimeResponse.model_validate(updated_crime)
+
 
 
 @router.delete(

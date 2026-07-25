@@ -87,13 +87,13 @@ async def rebuild_graph(
     summary="Get criminal node properties",
 )
 async def get_criminal_node(
-    criminal_id: UUID,
+    criminal_id: str,
     db: DbSession,
     current_user: CurrentUser,
     graph_db: AsyncSession = Depends(get_neo4j_session),
 ):
     service = GraphService(db, graph_db)
-    node = await service.repo.get_node_by_label_and_id("Criminal", str(criminal_id))
+    node = await service.repo.get_node_by_label_and_id("Criminal", criminal_id)
     if not node:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -104,23 +104,18 @@ async def get_criminal_node(
 
 @router.get(
     "/crime/{crime_id}",
-    response_model=Dict[str, Any],
-    summary="Get crime node properties",
+    response_model=GraphNetworkResponse,
+    summary="Get crime node network",
 )
 async def get_crime_node(
-    crime_id: UUID,
+    crime_id: str,
     db: DbSession,
     current_user: CurrentUser,
     graph_db: AsyncSession = Depends(get_neo4j_session),
 ):
     service = GraphService(db, graph_db)
-    node = await service.repo.get_node_by_label_and_id("Crime", str(crime_id))
-    if not node:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Crime node not found in Neo4j: {crime_id}",
-        )
-    return node
+    return await service.get_crime_network(crime_id)
+
 
 
 from app.core.cache import cache_response
@@ -134,15 +129,14 @@ from app.core.cache import cache_response
 )
 @cache_response(ttl_seconds=300, namespace="graph")
 async def get_criminal_network(
-    criminal_id: UUID,
+    criminal_id: str,
     db: DbSession,
     current_user: CurrentUser,
     max_depth: int = Query(2, ge=1, le=4, description="Graph traversal depth limit"),
     graph_db: AsyncSession = Depends(get_neo4j_session),
 ):
     service = GraphService(db, graph_db)
-    # Check if starting criminal exists first
-    nodes, rels = await service.repo.get_criminal_network(str(criminal_id), max_depth=max_depth)
+    nodes, rels = await service.repo.get_criminal_network(criminal_id, max_depth=max_depth)
     return GraphNetworkResponse(nodes=nodes, relationships=rels)
 
 
@@ -153,7 +147,7 @@ async def get_criminal_network(
     description="Finds indirect links: criminals sharing co-offenders who haven't committed crimes directly together.",
 )
 async def get_common_associates(
-    criminal_id: UUID,
+    criminal_id: str,
     db: DbSession,
     current_user: CurrentUser,
     graph_db: AsyncSession = Depends(get_neo4j_session),
@@ -185,14 +179,15 @@ async def get_gang_network(
     description="Calculates co-offence connections linking two criminals.",
 )
 async def get_shortest_path(
-    criminal1: UUID,
-    criminal2: UUID,
+    criminal1: str,
+    criminal2: str,
     db: DbSession,
     current_user: CurrentUser,
     graph_db: AsyncSession = Depends(get_neo4j_session),
 ):
     service = GraphService(db, graph_db)
     return await service.get_shortest_path(criminal1, criminal2)
+
 
 
 @router.get(

@@ -47,12 +47,13 @@ export default function ReportsPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#21262d] border border-[#30363d] text-[#e6edf3] text-[12px] rounded hover:bg-[#30363d]"
+              <Link
+                href={`/reports/new?preset=${r.type}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#21262d] border border-[#30363d] text-[#e6edf3] text-[12px] rounded hover:bg-[#30363d] transition-colors"
               >
-                <Printer size={13} /> Print / Export PDF
-              </button>
+                <Printer size={13} /> Compile & Print PDF
+              </Link>
+
             </div>
           ))}
         </div>

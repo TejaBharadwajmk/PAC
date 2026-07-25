@@ -92,6 +92,8 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+import { PacLogoEmblem } from "@/components/common/PacLogoEmblem";
+
 export function Sidebar() {
   const pathname   = usePathname();
   const { user }   = useSessionStore();
@@ -111,23 +113,27 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex items-center justify-between px-3 py-4 border-b border-[#30363d]">
+      <div className="flex items-center justify-between px-3 py-3.5 border-b border-[#30363d]">
         {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-7 h-7 rounded bg-[#1f6feb]">
-              <Shield size={14} className="text-white" />
-            </div>
+          <div className="flex items-center gap-2.5">
+            <PacLogoEmblem size={32} />
             <div className="leading-tight">
-              <p className="text-[13px] font-bold text-[#e6edf3] tracking-wide">PAC</p>
-              <p className="text-[10px] text-[#8b949e]">Intelligence Core</p>
+              <p className="text-[13px] font-bold text-[#e6edf3] tracking-wide flex items-center gap-1.5">
+                PAC
+                <span className="text-[9px] px-1 py-0.2 rounded bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/40 font-mono font-semibold uppercase">
+                  State Police
+                </span>
+              </p>
+              <p className="text-[10px] text-[#8b949e] font-medium">Intelligence Core</p>
             </div>
           </div>
         )}
         {collapsed && (
-          <div className="flex items-center justify-center w-7 h-7 rounded bg-[#1f6feb] mx-auto">
-            <Shield size={14} className="text-white" />
+          <div className="mx-auto">
+            <PacLogoEmblem size={28} />
           </div>
         )}
+
         <button
           onClick={() => setCollapsed((c) => !c)}
           className={cn(

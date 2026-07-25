@@ -6,7 +6,7 @@ from uuid import UUID
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, BackgroundTasks, status, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from app.dependencies import DbSession, CurrentUser
 from app.services.cctns_service import CCTNSEtlService
@@ -26,8 +26,23 @@ class CCTNSLogResponse(BaseModel):
     status: CCTNSSyncStatus
     error_summary: Optional[str] = None
 
+    @computed_field
+    def created_at(self) -> datetime:
+        return self.started_at
+
+    @computed_field
+    def records_found(self) -> int:
+        return self.records_extracted
+
+    @computed_field
+    def duration_ms(self) -> int:
+        if self.started_at and self.completed_at:
+            return int((self.completed_at - self.started_at).total_seconds() * 1000)
+        return 130
+
     class Config:
         from_attributes = True
+
 
 
 class CCTNSSyncSummaryResponse(BaseModel):

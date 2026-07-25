@@ -98,8 +98,9 @@ class AssistantEngine:
         """
         t_start = time.monotonic()
 
-        # 1. Resolve entity context from session + explicit params
-        entity_context = _resolve_entity_context(
+        # 1. Resolve entity context from session + explicit params + DB lookup
+        entity_context = await _resolve_entity_context_async(
+            db=self.db,
             session_id=session_id,
             question=question,
             criminal_id=criminal_id,
@@ -107,6 +108,7 @@ class AssistantEngine:
             district=district,
             gang_name=gang_name,
         )
+
 
         # 2. Classify intent
         intent = _classify_intent(question, entity_context)
@@ -148,8 +150,9 @@ class AssistantEngine:
         )
 
         # 10. Extract structured metadata
-        confidence = extract_confidence_from_response(validated_answer)
+        confidence = extract_confidence_from_response(validated_answer, context)
         recommendations = extract_recommendations(validated_answer)
+
         follow_up = extract_follow_up_questions(validated_answer, intent)
 
         # 11. Update session memory with resolved entities
@@ -353,7 +356,8 @@ def _classify_intent(question: str, entity_context: Dict[str, Any]) -> str:
 
 # ── Session Memory ─────────────────────────────────────────────────────────────
 
-def _resolve_entity_context(
+async def _resolve_entity_context_async(
+    db: AsyncSession,
     session_id: str,
     question: str,
     criminal_id: Optional[str],
@@ -361,20 +365,43 @@ def _resolve_entity_context(
     district: Optional[str],
     gang_name: Optional[str],
 ) -> Dict[str, Any]:
-    """Merge explicit params with session memory for entity resolution.
-
-    Explicit params always override session memory.  Session memory fills
-    in gaps for follow-up questions like 'show his associates'.
-    """
+    """Merge explicit params with session memory and DB resolution."""
+    from sqlalchemy import text
     session = _sessions.get(session_id, {})
+    resolved_criminal_id = criminal_id or session.get("criminal_id")
+    resolved_crime_id = crime_id or session.get("crime_id")
+    resolved_district = district or session.get("district")
+    resolved_gang = gang_name or session.get("gang_name")
+
+    q_lower = question.lower()
+    if ("offender" in q_lower or "criminal" in q_lower or "high risk" in q_lower or "risk" in q_lower) and not resolved_criminal_id:
+        try:
+            c_res = await db.execute(text("SELECT id, name FROM criminals"))
+            all_criminals = c_res.mappings().all()
+            for c in all_criminals:
+                if c["name"] and c["name"].lower() in q_lower:
+                    resolved_criminal_id = str(c["id"])
+                    break
+            
+            if not resolved_criminal_id:
+                top_res = await db.execute(
+                    text("SELECT id, name FROM criminals WHERE is_repeat_offender = true ORDER BY previous_cases_count DESC LIMIT 1")
+                )
+                top_offender = top_res.mappings().first()
+                if top_offender:
+                    resolved_criminal_id = str(top_offender["id"])
+        except Exception as exc:
+            logger.warning(f"Entity resolution error: {exc}")
 
     return {
-        "criminal_id": criminal_id or session.get("criminal_id"),
-        "crime_id":    crime_id    or session.get("crime_id"),
-        "district":    district    or session.get("district"),
-        "gang_name":   gang_name   or session.get("gang_name"),
-        "query_text":  question,
+        "criminal_id": resolved_criminal_id,
+        "crime_id": resolved_crime_id,
+        "district": resolved_district,
+        "gang_name": resolved_gang,
+        "query_text": question,
     }
+
+
 
 
 def _update_session(session_id: str, entity_context: Dict[str, Any]) -> None:

@@ -20,11 +20,15 @@ export const graphApi = {
 
   /** Find shortest path between two criminals in Neo4j. */
   shortestPath: async (sourceId: string, targetId: string): Promise<NetworkGraphResponse> => {
-    const res = await pacClient.get<NetworkGraphResponse>("/api/v1/graph/shortest-path", {
-      params: { source_id: sourceId, target_id: targetId },
-    });
+    const res = await pacClient.get<NetworkGraphResponse>(`/api/v1/graph/shortest-path/${sourceId}/${targetId}`);
     return res.data;
   },
+  /** Get gang graph centered on gang name. */
+  gangGraph: async (gangName: string): Promise<NetworkGraphResponse> => {
+    const res = await pacClient.get<NetworkGraphResponse>(`/api/v1/graph/gang/${encodeURIComponent(gangName)}`);
+    return res.data;
+  },
+
 
   /** Graph statistics (total nodes, edges, density). */
   statistics: async (): Promise<GraphStatisticsResponse> => {

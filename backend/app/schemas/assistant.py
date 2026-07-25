@@ -19,7 +19,7 @@ class AssistantChatRequest(BaseModel):
         min_length=3,
         max_length=1000,
         description="The investigator's natural language question.",
-        example="Why is this criminal classified as High Risk?",
+        examples=["Why is this criminal classified as High Risk?"],
     )
     session_id: str = Field(
         default="default",

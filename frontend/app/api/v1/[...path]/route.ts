@@ -15,10 +15,8 @@ async function handleRequest(
   const pathStr = path.join("/");
   const { search } = new URL(req.url);
   
-  // FastAPI routing convention: 1-segment collections (e.g. crimes, criminals)
-  // require a trailing slash, whereas sub-actions/resources (e.g. auth/me, crimes/my-cases) do not.
-  const needsTrailingSlash = path.length === 1;
-  const targetUrl = `${BACKEND_URL}/api/v1/${pathStr}${needsTrailingSlash ? "/" : ""}${search}`;
+  const targetUrl = `${BACKEND_URL}/api/v1/${pathStr}${search}`;
+
 
   const headers = new Headers();
   req.headers.forEach((val, key) => {

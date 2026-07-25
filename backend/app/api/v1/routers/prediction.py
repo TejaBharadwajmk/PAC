@@ -86,6 +86,25 @@ async def get_hotspot_predictions(
 
 
 @router.get(
+    "/gang/{gang_name}",
+    response_model=PredictionResponse,
+    summary="Get Gang Threat Index"
+)
+async def get_gang_prediction(
+    gang_name: str,
+    db: AsyncSession = Depends(get_db_session),
+    g_session: Neo4jSession = Depends(get_neo4j_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Retrieves or calculates the Gang Threat Index score for a specific gang."""
+    service = PredictionService(db, g_session)
+    pred = await service.repo.get_by_entity("gang", gang_name)
+    if not pred:
+        pred = await service.generate_gang_prediction(gang_name)
+    return pred
+
+
+@router.get(
     "/gangs",
     response_model=List[PredictionResponse],
     summary="Get Gang Threat Rankings"
@@ -97,6 +116,7 @@ async def get_gang_predictions(
     """Retrieves gang threat rankings and threat score breakdowns."""
     service = PredictionService(db)
     return await service.repo.get_gang_rankings()
+
 
 
 @router.get(

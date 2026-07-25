@@ -73,7 +73,8 @@ interface RecommendationListProps {
 }
 
 export function RecommendationList({ items, title, className }: RecommendationListProps) {
-  if (!items.length) return null;
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) return null;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {title && (
@@ -81,7 +82,7 @@ export function RecommendationList({ items, title, className }: RecommendationLi
           {title}
         </p>
       )}
-      {items.map((item, i) => (
+      {safeItems.map((item, i) => (
         <RecommendationCard
           key={i}
           text={item}
@@ -92,3 +93,4 @@ export function RecommendationList({ items, title, className }: RecommendationLi
     </div>
   );
 }
+

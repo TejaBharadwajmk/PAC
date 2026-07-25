@@ -53,12 +53,14 @@ interface SourceChipListProps {
 }
 
 export function SourceChipList({ sources, className }: SourceChipListProps) {
-  if (!sources.length) return null;
+  const safeSources = Array.isArray(sources) ? sources : [];
+  if (!safeSources.length) return null;
   return (
     <div className={cn("flex flex-wrap gap-1", className)}>
-      {sources.map((s) => (
+      {safeSources.map((s) => (
         <SourceChip key={s} source={s} />
       ))}
     </div>
   );
 }
+

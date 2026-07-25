@@ -171,9 +171,9 @@ def build_context(
     ctx["evidence"].extend([
         item["label"]
         for item in ranked_evidence
-        if item["source"] not in ("behaviour", "prediction:criminal_risk")
-        and item["label"] not in ctx["evidence"]
+        if item["label"] not in ctx["evidence"]
     ])
+
 
     # Deduplicate evidence list
     seen: set = set()

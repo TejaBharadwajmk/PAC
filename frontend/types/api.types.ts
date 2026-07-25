@@ -262,34 +262,49 @@ export interface SimilarityMatch {
 }
 
 export interface SimilaritySearchRequest {
-  mo_text:          string;
-  top_k?:           number;
-  min_score?:       number;
-  district_filter?: string;
-  crime_type_filter?: CrimeType;
+  query_text:        string;
+  limit?:             number;
+  min_similarity?:    number;
+  district?:          string;
+  crime_type?:        CrimeType;
 }
+
+export interface SimilaritySearchResponse {
+  query_text: string;
+  results:    SimilarityMatch[];
+  total_candidates_scanned?: number;
+}
+
 
 // ── Geo Intelligence ──────────────────────────────────────────────────────────
 
 export interface HotspotResponse {
-  cluster_id:   number;
-  centroid_lat: number;
-  centroid_lng: number;
-  crime_count:  number;
-  dominant_type: CrimeType;
-  district:     string | null;
-  radius_m:     number;
-  crimes:       CrimeListItem[];
+  cluster_id:              number;
+  center_latitude:         number;
+  center_longitude:        number;
+  radius_meters:           number;
+  crime_count:             number;
+  dominant_crime_type:     CrimeType | string;
+  peak_time?:              string;
+  suggested_patrol_window?: string;
+  hotspot_trend?:          string;
+  confidence_score?:       number;
+  risk_level?:             string;
+  repeat_offenders_count?: number;
+  known_gangs_count?:      number;
+  recommendation?:         string;
 }
 
 export interface GeoStatisticsResponse {
-  total_crimes:    number;
-  total_clusters:  number;
-  avg_cluster_size: number;
-  max_cluster_size: number;
-  top_district:    string | null;
-  top_crime_type:  CrimeType | null;
+  total_crimes_analyzed:        number;
+  total_hotspots_detected:      number;
+  total_clustered_crimes:       number;
+  total_noise_crimes:           number;
+  top_hotspot_district:         string | null;
+  average_hotspot_radius_meters: number;
+  highest_risk_hotspot_id:      number | null;
 }
+
 
 // ── Network Intelligence ──────────────────────────────────────────────────────
 

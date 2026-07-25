@@ -104,7 +104,9 @@ export default function SupervisorDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <IntelCard title="Active Cases"    value={totalCases}                  icon={<Briefcase size={15} />} severity="info" />
         <IntelCard title="Critical Cases"  value={criticalCrimes?.total ?? 0}  icon={<AlertTriangle size={15} />} severity="critical" />
-        <IntelCard title="Crime Clusters"  value={geoStats?.total_clusters ?? "—"} icon={<Map size={15} />} severity="high" />
+        <IntelCard title="Crime Clusters"  value={geoStats?.total_hotspots_detected ?? 0} icon={<Map size={15} />} severity="high" />
+
+
         <IntelCard title="High Risk Criminals" value={predStats?.risk_level_distribution?.HIGH ?? 0} icon={<Users size={15} />} severity="high" href="/predictions" />
         <IntelCard title="Avg Risk Score"  value={scoreToPercent(predStats?.average_criminal_risk_score ?? 0)} icon={<TrendingUp size={15} />} severity="moderate" />
         <IntelCard title="Solved Today"    value={solvedCases}                 icon={<Activity size={15} />} severity="low" />
@@ -162,10 +164,11 @@ export default function SupervisorDashboard() {
                     {districtHotspots.slice(0, 3).map((h) => (
                       <div key={h.cluster_id} className="flex items-center justify-between py-2 border-b border-[#21262d] last:border-0">
                         <div>
-                          <p className="text-[12px] text-[#c9d1d9]">{CRIME_TYPE_LABELS[h.dominant_type]}</p>
+                          <p className="text-[12px] text-[#c9d1d9]">{CRIME_TYPE_LABELS[h.dominant_crime_type] ?? h.dominant_crime_type}</p>
                           <p className="text-[11px] text-[#8b949e] font-mono">{h.crime_count} crimes</p>
                         </div>
-                        <span className="text-[11px] font-mono text-[#8b949e]">r={Math.round(h.radius_m)}m</span>
+                        <span className="text-[11px] font-mono text-[#8b949e]">r={Math.round(h.radius_meters ?? 0)}m</span>
+
                       </div>
                     ))}
                   </div>

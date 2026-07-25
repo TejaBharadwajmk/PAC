@@ -202,8 +202,9 @@ class DNARepository:
         query_text: Optional[str] = None,
         exclude_crime_id: Optional[UUID] = None,
         limit: int = 50,             # over-fetch for Python re-ranking
-        max_distance: float = 0.50,  # 1.0 - min_similarity
+        max_distance: float = 0.95,  # allow nearest ANN vector neighbors
         district_filter: Optional[str] = None,
+
         crime_type_filter: Optional[str] = None,
         time_slot_filter: Optional[str] = None,
     ) -> List[Tuple[dict, float, float]]:
@@ -213,7 +214,8 @@ class DNARepository:
         Returns list of (row_dict, semantic_similarity, fts_score) tuples, sorted
         best-first by semantic similarity. Caller applies Phase 3 re-ranking.
         """
-        conditions = ["d.status = 'completed'", "d.embedding IS NOT NULL"]
+        conditions = ["d.status::text = 'completed'", "d.embedding IS NOT NULL"]
+
         params: dict = {
             "embedding": str(query_embedding),
             "max_distance": max_distance,

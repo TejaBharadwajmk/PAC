@@ -25,6 +25,7 @@ from app.core.exceptions import NotFoundError
 router = APIRouter()
 
 
+@router.post("")
 @router.post(
     "/",
     response_model=CriminalResponse,
@@ -62,11 +63,13 @@ async def register_criminal(
     return new_criminal
 
 
+@router.get("")
 @router.get(
     "/",
     response_model=List[CriminalListItem],
     summary="List criminals",
 )
+
 async def list_criminals(
     district: Optional[str] = Query(None),
     is_wanted: Optional[bool] = Query(None),

@@ -145,7 +145,21 @@ class GraphRepository:
 
     async def get_node_by_label_and_id(self, label: str, id_value: str) -> Optional[Dict[str, Any]]:
         """Fetches properties of a single node in Neo4j."""
-        query = f"MATCH (n:{label} {{id: $id_value}}) RETURN n"
+        if label == "Crime":
+            query = """
+            MATCH (n:Crime)
+            WHERE n.id = $id_value OR n.fir_number = $id_value OR toLower(n.fir_number) CONTAINS toLower($id_value)
+            RETURN n LIMIT 1
+            """
+        elif label == "Gang":
+            query = """
+            MATCH (n:Gang)
+            WHERE n.name = $id_value OR toLower(n.name) CONTAINS toLower($id_value) OR n.id = $id_value
+            RETURN n LIMIT 1
+            """
+        else:
+            query = f"MATCH (n:{label}) WHERE n.id = $id_value OR toLower(n.name) CONTAINS toLower($id_value) RETURN n LIMIT 1"
+
         result = await self.session.run(query, {"id_value": id_value})
         record = await result.single()
         if not record:
@@ -157,7 +171,61 @@ class GraphRepository:
             "properties": dict(node)
         }
 
+    async def get_crime_network(self, crime_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Traverses nodes connected to a starting crime FIR up to 1 hop.
+        """
+        clean_id = crime_id.strip()
+        tokens = [clean_id]
+        if "-" in clean_id:
+            tokens.append(clean_id.split("-")[-1])
+
+        query = """
+        MATCH (c:Crime)
+        WHERE c.id IN $tokens 
+           OR c.fir_number IN $tokens 
+           OR ANY(t IN $tokens WHERE toLower(c.fir_number) CONTAINS toLower(t))
+           OR ANY(t IN $tokens WHERE toLower(c.id) CONTAINS toLower(t))
+        MATCH path = (c)-[*..1]-(target)
+        RETURN path
+        """
+        result = await self.session.run(query, {"tokens": tokens})
+
+        
+        nodes_map = {}
+        relationships_list = []
+        relationships_seen = set()
+
+        async for record in result:
+            path = record["path"]
+            for node in path.nodes:
+                n_id = node.get("id") or node.get("name") or node.get("fir_number")
+                if n_id and n_id not in nodes_map:
+                    nodes_map[n_id] = {
+                        "id": str(n_id),
+                        "label": list(node.labels)[0] if node.labels else "Unknown",
+                        "properties": dict(node)
+                    }
+            for rel in path.relationships:
+                start_node = rel.nodes[0]
+                end_node = rel.nodes[1]
+                s_id = str(start_node.get("id") or start_node.get("name") or start_node.get("fir_number"))
+                t_id = str(end_node.get("id") or end_node.get("name") or end_node.get("fir_number"))
+                
+                rel_key = f"{s_id}-{t_id}-{rel.type}-{dict(rel)}"
+                if rel_key not in relationships_seen:
+                    relationships_seen.add(rel_key)
+                    relationships_list.append({
+                        "source": s_id,
+                        "target": t_id,
+                        "type": rel.type,
+                        "properties": dict(rel)
+                    })
+
+        return list(nodes_map.values()), relationships_list
+
     async def get_criminal_network(self, criminal_id: str, max_depth: int = 2) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+
         """
         Traverses nodes connected to a starting criminal up to max_depth.
         Returns serialized (nodes, relationships) matching GraphNetworkResponse schema.
@@ -216,7 +284,8 @@ class GraphRepository:
         query = """
         MATCH (c1:Criminal {id: $id1})
         MATCH (c2:Criminal {id: $id2})
-        MATCH path = shortestPath((c1)-[:CRIMINAL_ASSOCIATED_WITH_CRIMINAL|CRIMINAL_COMMITTED_CRIME*..5]-(c2))
+        MATCH path = shortestPath((c1)-[:CRIMINAL_ASSOCIATED_WITH_CRIMINAL|MEMBER_OF_GANG*..3]-(c2))
+
         RETURN path
         """
         result = await self.session.run(query, {"id1": criminal_id1, "id2": criminal_id2})

@@ -117,23 +117,46 @@ export default function PredictionsPage() {
         <div className="flex flex-col gap-4 animate-fade-in">
           <form
             onSubmit={(e) => { e.preventDefault(); if (criminalId) getCrimPred(); }}
-            className="pac-card flex gap-3"
+            className="pac-card flex flex-col gap-3"
           >
-            <input
-              type="text"
-              value={criminalId}
-              onChange={(e) => setCriminalId(e.target.value)}
-              placeholder="Enter Criminal UUID to calculate risk score…"
-              className="flex-1 bg-[#0d1117] border border-[#30363d] rounded text-[13px] px-3 py-2 text-[#e6edf3] font-mono focus:outline-none focus:border-[#f85149]"
-            />
-            <button
-              type="submit"
-              disabled={crimLoading || !criminalId}
-              className="px-4 py-2 bg-[#f85149] text-white text-[13px] font-semibold rounded hover:bg-[#d93830] disabled:opacity-40"
-            >
-              {crimLoading ? "Calculating…" : "Calculate Risk"}
-            </button>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={criminalId}
+                onChange={(e) => setCriminalId(e.target.value)}
+                placeholder="Enter Criminal UUID to calculate risk score…"
+                className="flex-1 bg-[#0d1117] border border-[#30363d] rounded text-[13px] px-3 py-2 text-[#e6edf3] font-mono focus:outline-none focus:border-[#f85149]"
+              />
+              <button
+                type="submit"
+                disabled={crimLoading || !criminalId}
+                className="px-4 py-2 bg-[#f85149] text-white text-[13px] font-semibold rounded hover:bg-[#d93830] disabled:opacity-40"
+              >
+                {crimLoading ? "Calculating…" : "Calculate Risk"}
+              </button>
+            </div>
+
+            {/* Quick Sample Target Chips */}
+            <div className="flex items-center gap-2 text-[11px] font-mono text-[#8b949e]">
+              <span>Sample Targets:</span>
+              {[
+                { name: "Raju Kamble (15 Cases)", id: "8867bf62-02b7-4d61-a36f-632b6a04c6f1" },
+                { name: "Prakash Chinnaswamy", id: "8b7236af-2ee8-465c-8676-8b576efc89dd" },
+                { name: "Sanjay Kumar Rao", id: "313a2330-000b-42a7-99d6-cddca2bcd985" },
+                { name: "Lokesh Hegde", id: "00187804-adb9-4979-86b5-f019bcb3a5cf" },
+              ].map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => { setCriminalId(c.id); setTimeout(() => getCrimPred(), 50); }}
+                  className="px-2 py-0.5 bg-[#161b22] border border-[#30363d] rounded text-[#58a6ff] hover:bg-[#21262d] transition-colors"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
           </form>
+
 
           {crimPred && (
             <div className="pac-card flex flex-col gap-4 border-[#f85149]/40">
@@ -225,23 +248,41 @@ export default function PredictionsPage() {
         <div className="flex flex-col gap-4 animate-fade-in">
           <form
             onSubmit={(e) => { e.preventDefault(); if (gangName) getGangPred(); }}
-            className="pac-card flex gap-3"
+            className="pac-card flex flex-col gap-3"
           >
-            <input
-              type="text"
-              value={gangName}
-              onChange={(e) => setGangName(e.target.value)}
-              placeholder="Enter Gang Name (e.g. D-Company)…"
-              className="flex-1 bg-[#0d1117] border border-[#30363d] rounded text-[13px] px-3 py-2 text-[#e6edf3] focus:outline-none focus:border-[#bc8cff]"
-            />
-            <button
-              type="submit"
-              disabled={gangLoading || !gangName}
-              className="px-4 py-2 bg-[#bc8cff] text-[#0d1117] text-[13px] font-bold rounded hover:bg-[#c8a0ff] disabled:opacity-40"
-            >
-              {gangLoading ? "Assessing…" : "Assess Threat"}
-            </button>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={gangName}
+                onChange={(e) => setGangName(e.target.value)}
+                placeholder="Enter Gang Name (e.g. D-Company)…"
+                className="flex-1 bg-[#0d1117] border border-[#30363d] rounded text-[13px] px-3 py-2 text-[#e6edf3] focus:outline-none focus:border-[#bc8cff]"
+              />
+              <button
+                type="submit"
+                disabled={gangLoading || !gangName}
+                className="px-4 py-2 bg-[#bc8cff] text-[#0d1117] text-[13px] font-bold rounded hover:bg-[#c8a0ff] disabled:opacity-40"
+              >
+                {gangLoading ? "Assessing…" : "Assess Threat"}
+              </button>
+            </div>
+
+            {/* Quick Sample Gang Chips */}
+            <div className="flex items-center gap-2 text-[11px] font-mono text-[#8b949e]">
+              <span>Sample Gangs:</span>
+              {["Highway Dacoits", "Tech Fraud Gang", "D-Company"].map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => { setGangName(g); setTimeout(() => getGangPred(), 50); }}
+                  className="px-2 py-0.5 bg-[#161b22] border border-[#30363d] rounded text-[#bc8cff] hover:bg-[#21262d] transition-colors"
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
           </form>
+
 
           {gangPred && (
             <div className="pac-card flex flex-col gap-4 border-[#bc8cff]/40">

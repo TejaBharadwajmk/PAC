@@ -50,7 +50,8 @@ export default function OfficerDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <IntelCard
           title="Total My Cases"
-          value={myCases?.total ?? "—"}
+          value={myCases?.total ?? 0}
+
           icon={<FileText size={16} />}
           severity="info"
         />

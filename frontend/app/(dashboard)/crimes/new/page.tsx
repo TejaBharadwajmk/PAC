@@ -77,9 +77,21 @@ export default function NewCrimePage() {
 
       toast.success(`FIR ${res.fir_number} registered successfully!`);
       router.push(`/crimes/${res.id}`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to register crime";
-      toast.error(msg);
+    } catch (err: any) {
+      const status = err?.response?.status || err?.status;
+      const detail = err?.response?.data?.detail || err?.message;
+      if (status === 409) {
+        toast.error(`FIR Number already registered in database! Generating new unique FIR number...`);
+        const newFir = `FIR-2026-BLR-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
+        const el = document.querySelector('[name="fir_number"]') as HTMLInputElement;
+        if (el) {
+          el.value = newFir;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      } else {
+        toast.error(detail || "Failed to register crime");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -94,12 +106,47 @@ export default function NewCrimePage() {
   return (
     <div className="p-6 max-w-3xl mx-auto flex flex-col gap-6">
       {/* Header */}
-      <div>
-        <h1 className="text-[18px] font-bold text-[#e6edf3]">Register New FIR</h1>
-        <p className="text-[13px] text-[#8b949e] mt-0.5">
-          Enter First Information Report details. Modus Operandi (MO) features and Crime DNA embeddings are extracted automatically.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-[18px] font-bold text-[#e6edf3]">Register New FIR</h1>
+          <p className="text-[13px] text-[#8b949e] mt-0.5">
+            Enter First Information Report details. Modus Operandi (MO) features and Crime DNA embeddings are extracted automatically.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            const sample = {
+              fir_number:       `FIR-2026-BLR-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`,
+              crime_type:       "robbery",
+              severity:         "high",
+              occurred_at:      new Date().toISOString().slice(0, 16),
+              district:         "Bengaluru Urban",
+              police_station:   "Indiranagar Police Station",
+              location_address: "100 Feet Road, Near Metro Station",
+              latitude:         "12.9716",
+              longitude:        "77.5946",
+              description:      "Armed robbery at commercial jewelry showroom during peak evening hours.",
+              mo_text:          "Two unidentified masked perpetrators arrived on a dark red TVS Apache motorcycle. Entered commercial jewelry store at 19:45 IST holding country-made pistol. Forced staff into back room, smashed glass display counters using iron rod, and looted 450 grams of gold ornaments. Escaped via Old Madras Road towards Hoskote arterial highway.",
+            };
+
+            Object.entries(sample).forEach(([k, v]) => {
+              const el = document.querySelector(`[name="${k}"]`) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+              if (el) {
+                el.value = String(v);
+                el.dispatchEvent(new Event("input", { bubbles: true }));
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+            });
+            toast.success("Sample FIR Data loaded into form!");
+          }}
+          className="px-3.5 py-1.5 bg-[#21262d] border border-[#30363d] text-[#58a6ff] text-[12px] font-mono rounded hover:bg-[#30363d] transition-colors flex items-center gap-1.5"
+        >
+          ⚡ Auto-Fill Sample FIR
+        </button>
       </div>
+
 
       {/* Progress Steps */}
       <div className="flex items-center justify-between border-b border-[#30363d] pb-4">

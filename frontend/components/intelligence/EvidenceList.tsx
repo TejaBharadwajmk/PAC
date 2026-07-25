@@ -36,12 +36,14 @@ export function EvidenceList({
   className,
   maxItems,
 }: EvidenceListProps) {
-  if (!items.length) return null;
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) return null;
 
   const cfg         = VARIANT_CONFIG[variant];
   const Icon        = cfg.icon;
-  const displayItems = maxItems ? items.slice(0, maxItems) : items;
-  const hidden       = maxItems && items.length > maxItems ? items.length - maxItems : 0;
+  const displayItems = maxItems ? safeItems.slice(0, maxItems) : safeItems;
+  const hidden       = maxItems && safeItems.length > maxItems ? safeItems.length - maxItems : 0;
+
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>

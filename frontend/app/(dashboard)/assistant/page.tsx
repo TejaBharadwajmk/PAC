@@ -52,7 +52,7 @@ export default function AssistantPage() {
       });
 
       addMessage({
-        id:        `ai-${response.session_id}`,
+        id:        `ai-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
         role:      "assistant",
         content:   response.answer,
         timestamp: getIsoTimestamp(),
@@ -66,7 +66,8 @@ export default function AssistantPage() {
     }
   };
 
-  const lastAiResponse = [...messages].reverse().find((m) => m.response)?.response;
+  const lastAiResponse = [...messages].reverse().find((m) => m.response && m.response.answer)?.response;
+
 
   return (
     <div className="h-[calc(100vh-56px)] flex overflow-hidden bg-[#0d1117]">

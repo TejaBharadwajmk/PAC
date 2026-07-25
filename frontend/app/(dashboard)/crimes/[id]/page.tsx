@@ -299,7 +299,7 @@ export default function CrimeDetailPage() {
                 <p className="text-[#e6edf3] font-semibold capitalize">{mo.weapon_used || "None"}</p>
               </div>
 
-              {mo.modus_operandi_tags?.length ? (
+              {Array.isArray(mo?.modus_operandi_tags) && mo.modus_operandi_tags.length > 0 ? (
                 <div className="col-span-2 p-2.5 rounded bg-[#0d1117] border border-[#30363d]">
                   <p className="text-[10px] text-[#8b949e] font-mono uppercase mb-1">MO Tags</p>
                   <div className="flex flex-wrap gap-1">
@@ -328,7 +328,7 @@ export default function CrimeDetailPage() {
             Similar Cases (Crime DNA Vector Match)
           </h2>
           <span className="text-[12px] font-mono text-[#8b949e]">
-            {matches?.length ?? 0} matches found
+            {Array.isArray(matches) ? matches.length : 0} matches found
           </span>
         </div>
 
@@ -336,13 +336,14 @@ export default function CrimeDetailPage() {
           <div className="p-6 text-center text-[#8b949e] text-[13px]">
             Searching vector space for matching Modus Operandi...
           </div>
-        ) : !matches || matches.length === 0 ? (
+        ) : !Array.isArray(matches) || matches.length === 0 ? (
           <p className="text-[13px] text-[#8b949e] italic p-4 text-center bg-[#0d1117] rounded border border-[#30363d]">
             No similar crimes found above confidence threshold.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {matches.map((match) => (
+
               <div key={match.crime_id} className="p-3 bg-[#0d1117] rounded border border-[#30363d] flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[13px] font-bold font-mono text-[#58a6ff]">{match.fir_number}</span>

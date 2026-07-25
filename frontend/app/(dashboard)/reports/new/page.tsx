@@ -74,6 +74,37 @@ export default function NewReportPage() {
             </p>
           </div>
 
+          {/* Quick Presets Row */}
+          <div className="p-3 bg-[#0d1117] rounded border border-[#30363d] flex flex-col gap-2">
+            <p className="text-[11px] font-mono font-semibold uppercase text-[#8b949e] flex items-center gap-1">
+              ⚡ Quick Intelligence Sample Targets:
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                { label: "📄 FIR-2026-0042 Brief", type: "fir_investigation", cId: "fir-2026-0042", crId: "", dist: "", gang: "" },
+                { label: "👤 Raju Kamble Profile", type: "criminal_intelligence", cId: "", crId: "8867bf62-02b7-4d61-a36f-632b6a04c6f1", dist: "", gang: "" },
+                { label: "📍 Bengaluru Urban Hotspots", type: "hotspot_assessment", cId: "", crId: "", dist: "Bengaluru Urban", gang: "" },
+                { label: "🛡️ Highway Dacoits Threat", type: "gang_threat", cId: "", crId: "", dist: "", gang: "Highway Dacoits" },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    setReportType(p.type as ReportType);
+                    setCrimeId(p.cId);
+                    setCriminalId(p.crId);
+                    setDistrict(p.dist);
+                    setGangName(p.gang);
+                  }}
+                  className="px-2.5 py-1.5 bg-[#161b22] border border-[#30363d] rounded text-[11px] font-mono text-[#58a6ff] hover:bg-[#21262d] hover:border-[#58a6ff]/50 text-left transition-all"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-semibold text-[#8b949e]">Select Report Template *</label>
             <select

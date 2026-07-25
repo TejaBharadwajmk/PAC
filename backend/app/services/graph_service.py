@@ -181,12 +181,17 @@ class GraphService:
             "relationships_synced": total_links,
         }
 
-    async def get_criminal_network(self, criminal_id: UUID) -> GraphNetworkResponse:
+    async def get_criminal_network(self, criminal_id: str) -> GraphNetworkResponse:
         """Fetches the graph network surrounding a criminal."""
         nodes, rels = await self.repo.get_criminal_network(str(criminal_id))
         return GraphNetworkResponse(nodes=nodes, relationships=rels)
 
-    async def get_shortest_path(self, criminal_id1: UUID, criminal_id2: UUID) -> ShortestPathResponse:
+    async def get_crime_network(self, crime_id: str) -> GraphNetworkResponse:
+        """Fetches the graph network surrounding a crime FIR."""
+        nodes, rels = await self.repo.get_crime_network(str(crime_id))
+        return GraphNetworkResponse(nodes=nodes, relationships=rels)
+
+    async def get_shortest_path(self, criminal_id1: str, criminal_id2: str) -> ShortestPathResponse:
         """Calculates degrees of separation / shortest path between two criminals."""
         res = await self.repo.get_shortest_path(str(criminal_id1), str(criminal_id2))
         if not res:
@@ -198,6 +203,7 @@ class GraphService:
         """Fetches the co-offending network associated with a specific gang."""
         nodes, rels = await self.repo.get_gang_network(gang_name)
         return GraphNetworkResponse(nodes=nodes, relationships=rels)
+
 
     async def get_statistics(self) -> GraphStatisticsResponse:
         """Fetches the total counts of nodes and relationships from Neo4j."""

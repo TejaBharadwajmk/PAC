@@ -1,12 +1,12 @@
 import { pacClient } from "@/lib/api/pacClient";
 import type {
-  SimilarityMatch, SimilaritySearchRequest,
+  SimilarityMatch, SimilaritySearchRequest, SimilaritySearchResponse,
 } from "@/types/api.types";
 
 export const similarityApi = {
   /** MO text similarity search across all Crime DNA embeddings. */
-  search: async (data: SimilaritySearchRequest): Promise<SimilarityMatch[]> => {
-    const res = await pacClient.post<SimilarityMatch[]>("/api/v1/similarity/search", data);
+  search: async (data: SimilaritySearchRequest): Promise<SimilaritySearchResponse> => {
+    const res = await pacClient.post<SimilaritySearchResponse>("/api/v1/similarity/search", data);
     return res.data;
   },
 
@@ -17,5 +17,5 @@ export const similarityApi = {
     });
     return res.data;
   },
-
 };
+

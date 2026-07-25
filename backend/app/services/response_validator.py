@@ -124,23 +124,31 @@ def validate_response(
     return response, is_valid, violations
 
 
-def extract_confidence_from_response(response: str) -> float:
-    """Attempt to extract a confidence level from the LLM response text.
+def extract_confidence_from_response(response: str, context: Optional[Dict[str, Any]] = None) -> float:
+    """Calculates dynamic confidence score based on retrieved DB evidence quality & quantity."""
+    if not context:
+        return 0.75
 
-    Returns a float in [0.0, 1.0]:
-      High confidence    → 0.90
-      Moderate confidence → 0.65
-      Low confidence     → 0.40
-    """
+    evidence_facts = context.get("evidence", [])
+    data_sources = context.get("data_sources", [])
+    
+    # Base score derived from data source coverage
+    base_score = 0.50
+    if len(data_sources) >= 3:
+        base_score = 0.70
+    elif len(data_sources) >= 1:
+        base_score = 0.60
+        
+    # Add bonus for number of grounded evidence items retrieved from DB
+    evidence_bonus = min(0.25, len(evidence_facts) * 0.04)
+    
+    # Add bonus for text grounding keywords
     lower = response.lower()
-    if any(phrase in lower for phrase in ["high confidence", "confidence: high", "confidence level: high"]):
-        return 0.90
-    if any(phrase in lower for phrase in ["moderate confidence", "confidence: moderate"]):
-        return 0.65
-    if any(phrase in lower for phrase in ["low confidence", "confidence: low"]):
-        return 0.40
-    # Default: moderate
-    return 0.70
+    quality_bonus = 0.05 if any(k in lower for k in ["postgis", "neo4j", "pgvector", "cctns", "fir", "hotspot", "cluster"]) else 0.0
+    
+    score = round(min(0.98, max(0.35, base_score + evidence_bonus + quality_bonus)), 2)
+    return score
+
 
 
 def extract_recommendations(response: str) -> List[str]:

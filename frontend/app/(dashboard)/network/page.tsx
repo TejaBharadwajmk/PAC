@@ -40,6 +40,8 @@ export default function NetworkExplorerPage() {
   // Shortest path input state
   const [sourceId, setSourceId] = useState("");
   const [targetId, setTargetId] = useState("");
+  const [pathLoading, setPathLoading] = useState(false);
+  const [pathResult, setPathResult] = useState<any>(null);
 
   // Graph stats from Neo4j backend
   const { data: stats, refetch: refetchStats } = useQuery({
@@ -48,26 +50,72 @@ export default function NetworkExplorerPage() {
     staleTime: STALE_TIME.graph,
   });
 
-  // Shortest path query
-  const { data: pathResult, isFetching: pathLoading, refetch: findPath } = useQuery({
-    queryKey: ["graph", "shortest-path", sourceId, targetId],
-    queryFn: () => graphApi.shortestPath(sourceId, targetId),
-    enabled: false,
-    staleTime: STALE_TIME.graph,
-  });
-
   // Handle path search submission
-  const handlePathSearch = (e: React.FormEvent) => {
+  const handlePathSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sourceId.trim() || !targetId.trim()) return;
-    findPath();
+    setPathLoading(true);
+    setPathResult(null);
+    toast.info("Discovering shortest co-offending path in Neo4j…");
+    try {
+      const res = await graphApi.shortestPath(sourceId.trim(), targetId.trim());
+      setPathResult(res);
+
+      if (res && res.nodes && res.nodes.length > 0) {
+        setNodes((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id));
+          const newNodes: GraphNodeData[] = res.nodes.map((n: any) => ({
+            id: n.id,
+            label: n.label || n.properties?.name || n.properties?.fir_number || n.id,
+            type: (n.type || (n.labels && n.labels[0] ? n.labels[0].toLowerCase() : "criminal")) as any,
+            properties: n.properties || {},
+          }));
+          return [...prev, ...newNodes.filter((n) => !existingIds.has(n.id))];
+        });
+
+        const rawEdges = (res as any).edges || (res as any).relationships || [];
+        if (rawEdges && rawEdges.length > 0) {
+          setLinks((prev) => {
+            const existingLinkIds = new Set(prev.map((l) => l.id));
+            const newLinks: GraphLinkData[] = rawEdges.map((e: any, idx: number) => ({
+              id: `${e.source}-${e.target}-${idx}`,
+              source: e.source,
+              target: e.target,
+              type: e.type || e.relationship || "CONNECTED_TO",
+            }));
+            return [...prev, ...newLinks.filter((l) => !existingLinkIds.has(l.id))];
+          });
+        }
+        toast.success(`Shortest path found: ${(res as any).distance ?? (res.nodes.length - 1)} hop(s) connecting entities!`);
+      } else {
+        toast.warning("No co-offending path found between these two entities.");
+      }
+    } catch (err: any) {
+      toast.error(`Path discovery error: ${err.message || "Failed to query shortest path"}`);
+    } finally {
+      setPathLoading(false);
+    }
   };
+
+
 
   // Expand node's subgraph via API call
   const handleExpandNode = useCallback(async (nodeToExpand: GraphNodeData) => {
     toast.info(`Fetching sub-graph expansion for ${nodeToExpand.label}…`);
     try {
-      const res = await graphApi.network(nodeToExpand.id, 1);
+      let res: any;
+      const nodeType = (nodeToExpand.type || "").toLowerCase();
+      const idOrLabel = (nodeToExpand.id || "").toLowerCase();
+      const labelStr = (nodeToExpand.label || "").toLowerCase();
+
+      if (nodeType === "crime" || idOrLabel.includes("fir-") || labelStr.includes("fir-")) {
+        res = await graphApi.crimeGraph(nodeToExpand.id);
+      } else if (nodeType === "gang") {
+        res = await graphApi.gangGraph(nodeToExpand.label || nodeToExpand.id);
+      } else {
+        res = await graphApi.network(nodeToExpand.id, 1);
+      }
+
       if (res && res.nodes && res.nodes.length > 0) {
         // Merge new nodes
         setNodes((prev) => {
@@ -75,21 +123,23 @@ export default function NetworkExplorerPage() {
           const newNodes: GraphNodeData[] = res.nodes.map((n: any) => ({
             id: n.id || n.identity,
             label: n.label || n.properties?.name || n.properties?.fir_number || n.id,
-            type: (n.labels && n.labels[0] ? n.labels[0].toLowerCase() : "criminal") as any,
+            type: (n.type || (n.labels && n.labels[0] ? n.labels[0].toLowerCase() : "criminal")) as any,
             properties: n.properties || {},
           }));
           return [...prev, ...newNodes.filter((n) => !existingIds.has(n.id))];
         });
 
         // Merge new links
-        if (res.edges && res.edges.length > 0) {
+        const rawEdges = (res as any).edges || (res as any).relationships || [];
+
+        if (rawEdges && rawEdges.length > 0) {
           setLinks((prev) => {
             const existingLinkIds = new Set(prev.map((l) => l.id));
-            const newLinks: GraphLinkData[] = res.edges.map((e, idx) => ({
+            const newLinks: GraphLinkData[] = rawEdges.map((e: any, idx: number) => ({
               id: `${e.source}-${e.target}-${idx}`,
               source: e.source,
               target: e.target,
-              type: e.relationship || "CONNECTED_TO",
+              type: e.type || e.relationship || "CONNECTED_TO",
             }));
             return [...prev, ...newLinks.filter((l) => !existingLinkIds.has(l.id))];
           });
@@ -102,6 +152,7 @@ export default function NetworkExplorerPage() {
       toast.error(`Failed to expand graph: ${err.message || "Backend error"}`);
     }
   }, []);
+
 
   // Filter nodes according to type and search query
   const filteredNodes = nodes.filter((node) => {
@@ -209,20 +260,43 @@ export default function NetworkExplorerPage() {
             </h2>
 
             <div className="flex flex-col gap-2">
-              <input
-                type="text"
-                value={sourceId}
-                onChange={(e) => setSourceId(e.target.value)}
-                placeholder="Source Criminal ID (e.g. crim-101)..."
-                className="bg-[#0d1117] border border-[#30363d] rounded text-[12px] px-3 py-1.5 text-[#e6edf3] font-mono focus:outline-none focus:border-[#3fb950]"
-              />
-              <input
-                type="text"
-                value={targetId}
-                onChange={(e) => setTargetId(e.target.value)}
-                placeholder="Target Criminal ID (e.g. crim-103)..."
-                className="bg-[#0d1117] border border-[#30363d] rounded text-[12px] px-3 py-1.5 text-[#e6edf3] font-mono focus:outline-none focus:border-[#3fb950]"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={sourceId}
+                  onChange={(e) => setSourceId(e.target.value)}
+                  placeholder="Source Criminal ID..."
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded text-[12px] px-3 py-1.5 text-[#e6edf3] font-mono focus:outline-none focus:border-[#3fb950]"
+                />
+                {selectedNode && (
+                  <button
+                    type="button"
+                    onClick={() => setSourceId(selectedNode.id)}
+                    className="absolute right-1.5 top-1 px-2 py-0.5 bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/40 rounded text-[10px] hover:bg-[#3fb950]/30 transition-colors"
+                  >
+                    Use Selected
+                  </button>
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={targetId}
+                  onChange={(e) => setTargetId(e.target.value)}
+                  placeholder="Target Criminal ID..."
+                  className="w-full bg-[#0d1117] border border-[#30363d] rounded text-[12px] px-3 py-1.5 text-[#e6edf3] font-mono focus:outline-none focus:border-[#3fb950]"
+                />
+                {selectedNode && (
+                  <button
+                    type="button"
+                    onClick={() => setTargetId(selectedNode.id)}
+                    className="absolute right-1.5 top-1 px-2 py-0.5 bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/40 rounded text-[10px] hover:bg-[#58a6ff]/30 transition-colors"
+                  >
+                    Use Selected
+                  </button>
+                )}
+              </div>
             </div>
 
             <button
@@ -235,8 +309,8 @@ export default function NetworkExplorerPage() {
             </button>
 
             {pathResult && (
-              <div className="mt-2 p-2 bg-[#0d1117] rounded border border-[#30363d] text-[11px] font-mono text-[#3fb950]">
-                Path length: {pathResult.edges?.length ?? 0} hops found.
+              <div className="mt-1 p-2 bg-[#0d1117] rounded border border-[#30363d] text-[11px] font-mono text-[#3fb950]">
+                Path found: {(pathResult as any).distance ?? 0} degree(s) of separation.
               </div>
             )}
           </form>
@@ -249,11 +323,20 @@ export default function NetworkExplorerPage() {
               onExpand={handleExpandNode}
             />
           ) : (
-            <div className="pac-card text-center py-12 text-[12px] text-[#8b949e] border-[#30363d]">
-              <AlertCircle size={24} className="mx-auto mb-2 text-[#484f58]" />
-              Select or double-click any node in the topology canvas to inspect properties and expand relationships.
+            <div className="pac-card flex flex-col gap-3 p-4 text-[12px] text-[#8b949e] border-[#30363d]">
+              <div className="flex items-center gap-2 text-[#e6edf3] font-semibold text-[13px]">
+                <AlertCircle size={16} className="text-[#58a6ff]" />
+                Graph Interaction Guide
+              </div>
+              <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-[#8b949e]">
+                <li><strong className="text-[#e6edf3]">Single Click Node:</strong> Inspect property details & select as path source/target.</li>
+                <li><strong className="text-[#3fb950]">Double Click Node:</strong> Expand 1-hop sub-graph traversal via Neo4j.</li>
+                <li><strong className="text-[#58a6ff]">Drag Node:</strong> Reposition node anywhere on the matrix.</li>
+                <li><strong className="text-[#a855f7]">Mouse Wheel:</strong> Smooth zoom in/out of topology canvas.</li>
+              </ul>
             </div>
           )}
+
         </div>
       </div>
     </div>

@@ -72,14 +72,21 @@ export function Topbar() {
         </div>
       </form>
 
-      {/* Centre: system label */}
-      <div className="flex items-center gap-2 text-[#8b949e]">
-        <Shield size={12} className="text-[#1f6feb]" />
-        <span className="text-[11px] font-mono uppercase tracking-widest">
-          Police Analytics Core
-        </span>
-        <span className="text-[10px] font-mono text-[#484f58]">v1.0</span>
+      {/* Centre: enterprise technology badges & system status */}
+      <div className="hidden md:flex items-center gap-3 text-[#8b949e]">
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#161b22] border border-[#238636]/40 text-[#3fb950] font-mono text-[10px] font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#3fb950] animate-pulse" />
+          LIVE SYSTEM
+        </div>
+        <div className="flex items-center gap-1 text-[10px] font-mono text-[#8b949e]">
+          <Shield size={11} className="text-[#1f6feb]" />
+          <span>PostgreSQL • Neo4j • Redis</span>
+        </div>
+        <div className="flex items-center gap-1 font-mono text-[10px] text-[#bc8cff]">
+          <span>AI • pgvector • PostGIS</span>
+        </div>
       </div>
+
 
       {/* Right: user menu */}
       {user && (
