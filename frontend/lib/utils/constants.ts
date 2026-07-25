@@ -79,11 +79,15 @@ export const INTEL_SOURCE_LABELS: Record<string, string> = {
 export const KARNATAKA_MAP_CENTER: [number, number] = [76.5, 15.0];
 export const KARNATAKA_MAP_ZOOM = 7;
 
-// Backend API base (empty string uses same-origin Next.js rewrites in browser)
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// Backend API base (empty string uses same-origin Next.js BFF proxy to eliminate CORS)
+export const API_BASE_URL = "";
 
 // Internal backend URL for Next.js BFF server-side route handlers
-export const BACKEND_URL = process.env.INTERNAL_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://backend:8000";
+export const BACKEND_URL =
+  process.env.INTERNAL_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://pac-backend-50044350398.development.catalystserverless.com";
+
 
 
 // DNA polling interval in ms
