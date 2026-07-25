@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     try {
       backendRes = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
         body:    JSON.stringify({ refresh_token: refreshToken }),
         signal:  AbortSignal.timeout(1200),
       });

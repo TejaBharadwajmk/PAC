@@ -250,6 +250,7 @@ async function handleRequest(
       headers.set(key, val);
     }
   });
+  headers.set("bypass-tunnel-reminder", "true");
 
   const method = req.method;
   let body: any = undefined;

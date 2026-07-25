@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   try {
     const backendRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
       body:    JSON.stringify(body),
       signal:  AbortSignal.timeout(1200),
     });

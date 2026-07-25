@@ -86,7 +86,8 @@ export const API_BASE_URL = "";
 export const BACKEND_URL =
   process.env.INTERNAL_BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://pac-backend-50044350398.development.catalystserverless.com";
+  "https://eleven-dodos-call.loca.lt";
+
 
 
 
