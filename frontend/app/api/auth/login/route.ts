@@ -34,45 +34,51 @@ const DEMO_CREDENTIALS: Record<string, { role: string; name: string; email: stri
 };
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const badgeUpper = String(body.badge_number ?? "").toUpperCase().trim();
-
-  let backendRes: Response | null = null;
+  let body: any = {};
   try {
-    backendRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
+    body = await req.json();
+  } catch {}
+
+  const badgeUpper = String(body.badge_number ?? "").toUpperCase().trim();
+  const demoAccount = DEMO_CREDENTIALS[badgeUpper];
+
+  // Try real backend if available with a short 1.2s timeout
+  let backendData: any = null;
+  try {
+    const backendRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(body),
+      signal:  AbortSignal.timeout(1200),
     });
-  } catch (err) {
-    backendRes = null;
+
+    if (backendRes.ok) {
+      backendData = await backendRes.json().catch(() => null);
+    }
+  } catch {
+    backendData = null;
   }
 
-  // If backend returned 200 OK, use real backend token
-  if (backendRes && backendRes.ok) {
-    const data = await backendRes.json() as {
-      access_token: string;
-      refresh_token: string;
-      token_type:   string;
-      expires_in:   number;
-    };
-
+  // If backend succeeded, return real backend session
+  if (backendData && backendData.access_token) {
     const response = NextResponse.json({
-      access_token: data.access_token,
-      expires_in:   data.expires_in,
-      token_type:   data.token_type,
+      access_token: backendData.access_token,
+      expires_in:   backendData.expires_in ?? 1800,
+      token_type:   backendData.token_type ?? "bearer",
     });
 
-    response.cookies.set("pac_refresh_token", data.refresh_token, {
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path:     "/",
-      maxAge:   7 * 24 * 60 * 60,
-    });
+    if (backendData.refresh_token) {
+      response.cookies.set("pac_refresh_token", backendData.refresh_token, {
+        httpOnly: true,
+        secure:   process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path:     "/",
+        maxAge:   7 * 24 * 60 * 60,
+      });
+    }
 
     try {
-      const payload = jwtDecode<{ role?: string }>(data.access_token);
+      const payload = jwtDecode<{ role?: string }>(backendData.access_token);
       if (payload.role) {
         response.cookies.set("pac_role", payload.role, {
           httpOnly: false,
@@ -87,8 +93,7 @@ export async function POST(req: NextRequest) {
     return response;
   }
 
-  // Fallback for Hackathon Evaluation: check demo accounts
-  const demoAccount = DEMO_CREDENTIALS[badgeUpper];
+  // Demo account fallback for hackathon evaluation
   if (demoAccount) {
     const mockAccessToken = createDemoJwt(badgeUpper, demoAccount.role, demoAccount.name);
     const mockRefreshToken = createDemoJwt(badgeUpper, demoAccount.role, demoAccount.name);
@@ -118,12 +123,7 @@ export async function POST(req: NextRequest) {
     return response;
   }
 
-  // If credentials invalid and backend gave an error message, pass it back
-  if (backendRes && !backendRes.ok) {
-    const err = await backendRes.json().catch(() => ({ detail: "Invalid badge number or password" }));
-    return NextResponse.json(err, { status: backendRes.status });
-  }
-
   return NextResponse.json({ detail: "Invalid badge number or password" }, { status: 401 });
 }
+
 
