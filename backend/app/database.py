@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # ── Async engine (FastAPI runtime) ────────────────────────
 engine_kwargs: dict = {"echo": settings.DEBUG}
-if "sqlite" not in settings.DATABASE_URL:
+if "sqlite" not in settings.async_database_url:
     engine_kwargs.update({
         "pool_size": 10,
         "max_overflow": 20,
@@ -28,7 +28,7 @@ if "sqlite" not in settings.DATABASE_URL:
     })
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.async_database_url,
     **engine_kwargs
 )
 

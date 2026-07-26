@@ -74,6 +74,28 @@ class Settings(BaseSettings):
     # ── CORS ───────────────────────────────────────────────
     CORS_ORIGINS: List[str] = []
 
+    @property
+    def async_database_url(self) -> str:
+        """Ensures asyncpg driver prefix for runtime SQLAlchemy engine."""
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
+    @property
+    def sync_database_url(self) -> str:
+        """Ensures psycopg2 driver prefix for Alembic migrations."""
+        url = self.DATABASE_URL_SYNC or self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+psycopg2://"):
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        elif url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+        return url
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -90,3 +112,4 @@ def get_settings() -> Settings:
 
 # Global singleton for import convenience
 settings = get_settings()
+

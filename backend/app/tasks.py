@@ -20,6 +20,15 @@ from app.services.prediction_service import PredictionService
 logger = logging.getLogger(__name__)
 
 
+def _dummy_task_decorator(*args, **kwargs):
+    def _decorator(func):
+        return func
+    return _decorator
+
+
+task_decorator = celery_app.task if celery_app is not None else _dummy_task_decorator
+
+
 def _run_async(coro):
     """Utility helper to run async coroutines synchronously inside Celery worker threads."""
     loop = asyncio.new_event_loop()
@@ -30,7 +39,7 @@ def _run_async(coro):
         loop.close()
 
 
-@celery_app.task(name="app.tasks.task_generate_crime_dna", bind=True, max_retries=3, default_retry_delay=5)
+@task_decorator(name="app.tasks.task_generate_crime_dna", bind=True, max_retries=3, default_retry_delay=5)
 def task_generate_crime_dna(self, crime_id_str: str) -> Dict[str, Any]:
     """Generate dense 384-dim Crime DNA embedding and extract MO features."""
     logger.info(f"[Celery Worker] Generating Crime DNA | crime_id={crime_id_str}")
@@ -50,7 +59,7 @@ def task_generate_crime_dna(self, crime_id_str: str) -> Dict[str, Any]:
         raise self.retry(exc=exc)
 
 
-@celery_app.task(name="app.tasks.task_merge_graph_entity", bind=True, max_retries=3, default_retry_delay=5)
+@task_decorator(name="app.tasks.task_merge_graph_entity", bind=True, max_retries=3, default_retry_delay=5)
 def task_merge_graph_entity(self, criminal_id_str: str, crime_id_str: str) -> Dict[str, Any]:
     """Merge criminal-crime co-offending relationship into Neo4j graph DB."""
     logger.info(f"[Celery Worker] Merging Neo4j Graph entity | criminal_id={criminal_id_str} crime_id={crime_id_str}")
@@ -69,7 +78,7 @@ def task_merge_graph_entity(self, criminal_id_str: str, crime_id_str: str) -> Di
         raise self.retry(exc=exc)
 
 
-@celery_app.task(name="app.tasks.task_recompute_behavior_profile", bind=True, max_retries=3, default_retry_delay=5)
+@task_decorator(name="app.tasks.task_recompute_behavior_profile", bind=True, max_retries=3, default_retry_delay=5)
 def task_recompute_behavior_profile(self, criminal_id_str: str) -> Dict[str, Any]:
     """Recompute criminal MO consistency, operating radius, and temporal patterns."""
     logger.info(f"[Celery Worker] Recomputing Behaviour Profile | criminal_id={criminal_id_str}")
@@ -88,7 +97,7 @@ def task_recompute_behavior_profile(self, criminal_id_str: str) -> Dict[str, Any
         raise self.retry(exc=exc)
 
 
-@celery_app.task(name="app.tasks.task_recompute_prediction_profile", bind=True, max_retries=3, default_retry_delay=5)
+@task_decorator(name="app.tasks.task_recompute_prediction_profile", bind=True, max_retries=3, default_retry_delay=5)
 def task_recompute_prediction_profile(self, criminal_id_str: str) -> Dict[str, Any]:
     """Recalculate criminal risk score, escalation index, and target type probabilities."""
     logger.info(f"[Celery Worker] Recalculating Prediction Profile | criminal_id={criminal_id_str}")
@@ -107,7 +116,7 @@ def task_recompute_prediction_profile(self, criminal_id_str: str) -> Dict[str, A
         raise self.retry(exc=exc)
 
 
-@celery_app.task(name="app.tasks.task_cctns_periodic_sync", bind=True, max_retries=2, default_retry_delay=10)
+@task_decorator(name="app.tasks.task_cctns_periodic_sync", bind=True, max_retries=2, default_retry_delay=10)
 def task_cctns_periodic_sync(self) -> Dict[str, Any]:
     """Periodic Celery Beat task to execute CCTNS ETL data ingestion sync."""
     logger.info("[Celery Beat] Executing periodic CCTNS ETL data ingestion sync...")

@@ -94,10 +94,20 @@ app = FastAPI(
 )
 
 # ── CORS ───────────────────────────────────────────────────
+allowed_origins = [
+    "https://pac-fehvhyfs.onslate.in",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if settings.CORS_ORIGINS:
+    for origin in settings.CORS_ORIGINS:
+        if origin and origin not in allowed_origins:
+            allowed_origins.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r"https://.*|http://.*",
+    allow_origins=allowed_origins if settings.ENVIRONMENT == "production" else ["*"],
+    allow_origin_regex=None if settings.ENVIRONMENT == "production" else r"https://.*|http://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
