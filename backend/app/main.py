@@ -66,6 +66,41 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"Database table creation status: {exc}")
 
+    # Step 3: Automatically seed default officer accounts if missing
+    try:
+        from app.database import AsyncSessionLocal
+        from app.repositories.user_repo import UserRepository
+        from app.core.security import hash_password
+        from app.models.user import User, UserRole
+        import uuid
+
+        default_users = [
+            ("ADMIN001", "System Administrator", "admin@ksp.gov.in", UserRole.ADMIN, "password123"),
+            ("SUP001", "Senior Inspector", "supervisor@ksp.gov.in", UserRole.SUPERVISOR, "password123"),
+            ("ANA001", "Intelligence Analyst", "analyst@ksp.gov.in", UserRole.ANALYST, "password123"),
+            ("OFF001", "Field Officer", "officer@ksp.gov.in", UserRole.OFFICER, "password123"),
+        ]
+
+        async with AsyncSessionLocal() as session:
+            repo = UserRepository(session)
+            for badge, name, email, role, pwd in default_users:
+                existing = await repo.get_by_badge(badge)
+                if not existing:
+                    user = User(
+                        id=uuid.uuid4(),
+                        badge_number=badge,
+                        full_name=name,
+                        email=email,
+                        hashed_password=hash_password(pwd),
+                        role=role,
+                        is_active=True,
+                    )
+                    session.add(user)
+            await session.commit()
+        logger.info("Default officer accounts verified and seeded successfully.")
+    except Exception as seed_err:
+        logger.warning(f"Default user seeding note: {seed_err}")
+
 
     # ── Startup: recover orphaned DNA records ────────────────
     # Any PENDING/FAILED records from before a crash are re-queued
