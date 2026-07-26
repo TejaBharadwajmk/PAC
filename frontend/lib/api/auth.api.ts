@@ -11,8 +11,12 @@ export const authApi = {
   },
 
   /** Get the currently authenticated officer's profile. */
-  me: async (): Promise<UserResponse> => {
-    const res = await pacClient.get<UserResponse>("/api/v1/auth/me");
+  me: async (token?: string): Promise<UserResponse> => {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const res = await pacClient.get<UserResponse>("/api/v1/auth/me", { headers });
     return res.data;
   },
 

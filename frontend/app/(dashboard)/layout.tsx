@@ -26,30 +26,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     queryFn:  async () => {
       let currentToken = accessToken;
       if (!currentToken) {
-        const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
-        if (!refreshRes.ok) {
-          throw new Error("Session expired");
-        }
-        const data = await refreshRes.json();
-        currentToken = data.access_token;
-        if (currentToken) setAccessToken(currentToken);
+        try {
+          const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            currentToken = data.access_token;
+            if (currentToken) setAccessToken(currentToken);
+          }
+        } catch {}
       }
 
-      const user = await authApi.me();
+      const user = await authApi.me(currentToken || undefined);
       if (user) setUser(user);
       return user;
     },
     enabled:   true,
-    retry:     false,
+    retry:     2,
+    retryDelay: 1000,
     staleTime: 300_000,
   });
 
   useEffect(() => {
-    if (isError) {
-      logout();
-      router.push("/login");
+    if (isError && !isAuthenticated) {
+      const hasCookie = typeof document !== "undefined" && document.cookie.includes("pac_refresh_token");
+      if (!hasCookie) {
+        logout();
+        router.push("/login");
+      }
     }
-  }, [isError, logout, router]);
+  }, [isError, isAuthenticated, logout, router]);
 
   if (isLoading) {
     return (

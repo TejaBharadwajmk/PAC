@@ -159,7 +159,7 @@ export default function LoginPage() {
         const { access_token } = await res.json();
         setAccessToken(access_token);
         
-        const user = await authApi.me().catch(() => null);
+        const user = await authApi.me(access_token).catch(() => null);
         if (user) {
           login(access_token, user);
           toast.success(`Welcome back, ${user.full_name.split(" ")[0]}`);
