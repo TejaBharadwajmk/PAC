@@ -21,36 +21,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Silent refresh on mount — if no access token but refresh cookie exists,
   // the pacClient interceptor will handle it automatically on the first request.
   // Here we ensure we have a user profile loaded.
-  const { isLoading } = useQuery({
+  const { isLoading, isError } = useQuery({
     queryKey: ["auth", "me"],
     queryFn:  async () => {
       let currentToken = accessToken;
       if (!currentToken) {
-        try {
-          const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
-          if (refreshRes.ok) {
-            const data = await refreshRes.json();
-            currentToken = data.access_token;
-            if (currentToken) setAccessToken(currentToken);
-          }
-        } catch {}
+        const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
+        if (!refreshRes.ok) {
+          throw new Error("Session expired");
+        }
+        const data = await refreshRes.json();
+        currentToken = data.access_token;
+        if (currentToken) setAccessToken(currentToken);
       }
 
-      const user = await authApi.me().catch(() => {
-        const roleMatch = document.cookie.match(/pac_role=([^;]+)/);
-        const role = (roleMatch ? roleMatch[1] : "admin") as any;
-        return {
-          id:             `demo-${role}`,
-          badge_number:   role === "admin" ? "ADMIN001" : role === "supervisor" ? "SUP001" : role === "analyst" ? "ANA001" : "OFF001",
-          full_name:      role === "admin" ? "System Administrator" : role === "supervisor" ? "DCP Suresh Kumar" : role === "analyst" ? "SI Priya Rao" : "HC Ravi Kumar",
-          email:          `${role}@ksp.gov.in`,
-          district:       "Bengaluru Urban",
-          police_station: "Headquarters",
-          role:           role,
-          is_active:      true,
-        };
-      });
-
+      const user = await authApi.me();
       if (user) setUser(user);
       return user;
     },
@@ -58,6 +43,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     retry:     false,
     staleTime: 300_000,
   });
+
+  useEffect(() => {
+    if (isError) {
+      logout();
+      router.push("/login");
+    }
+  }, [isError, logout, router]);
 
   if (isLoading) {
     return (

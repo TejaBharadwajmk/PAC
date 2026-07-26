@@ -41,6 +41,8 @@ export function Topbar() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
+      document.cookie = "pac_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      document.cookie = "pac_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
       logout();
       router.push("/login");
     }

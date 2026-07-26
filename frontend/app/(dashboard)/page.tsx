@@ -14,17 +14,15 @@ const AdminDashboard      = dynamic(() => import("@/modules/dashboard/AdminDashb
 export default function DashboardPage() {
   const { user } = useSessionStore();
 
-  let role = user?.role;
-  if (!role && typeof document !== "undefined") {
-    const roleMatch = document.cookie.match(/pac_role=([^;]+)/);
-    if (roleMatch) role = roleMatch[1] as any;
+  if (!user) {
+    return <LoadingSkeleton variant="dashboard" />;
   }
 
-  switch (role) {
+  switch (user.role) {
     case "analyst":    return <AnalystDashboard />;
     case "supervisor": return <SupervisorDashboard />;
     case "admin":      return <AdminDashboard />;
     case "officer":    return <OfficerDashboard />;
-    default:           return <AdminDashboard />;
+    default:           return <OfficerDashboard />;
   }
 }
