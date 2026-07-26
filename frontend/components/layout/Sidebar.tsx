@@ -99,7 +99,13 @@ export function Sidebar() {
   const { user }   = useSessionStore();
   const [collapsed, setCollapsed] = useState(false);
 
-  const role    = (user?.role ?? "officer") as UserRole;
+  let role = user?.role as UserRole | undefined;
+  if (!role && typeof document !== "undefined") {
+    const roleMatch = document.cookie.match(/pac_role=([^;]+)/);
+    if (roleMatch) role = roleMatch[1] as UserRole;
+  }
+  if (!role) role = "admin";
+
   const visible = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
   const isActive = (href: string) =>
