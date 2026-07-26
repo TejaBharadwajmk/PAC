@@ -26,13 +26,21 @@ const MOCK_CRIMINALS = [
 
 function getMockResponse(pathStr: string, req: NextRequest, bodyData?: any): NextResponse | null {
   const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.replace(/^Bearer\s+/i, "");
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   let badge = "";
   try {
-    const payloadStr = Buffer.from(token.split(".")[1], "base64").toString("utf8");
-    const payload = JSON.parse(payloadStr);
-    badge = String(payload.badge || "").toUpperCase();
+    const parts = token.split(".");
+    if (parts.length >= 2) {
+      const payloadStr = Buffer.from(parts[1], "base64").toString("utf8");
+      const payload = JSON.parse(payloadStr);
+      badge = String(payload.badge || "").toUpperCase();
+    }
   } catch {}
+
+  if (!badge && token.includes("demo_token_")) {
+    const rolePart = token.replace("demo_token_", "").toUpperCase();
+    badge = rolePart === "ADMIN" ? "ADMIN001" : rolePart === "SUPERVISOR" ? "SUP001" : rolePart === "ANALYST" ? "ANA001" : "OFF001";
+  }
 
   // 1. Auth Me
   if (pathStr === "auth/me") {
