@@ -180,9 +180,9 @@ app.include_router(
 
 
 # ── Health Endpoints ───────────────────────────────────────
-@app.get("/", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"])
 async def root():
-    """AppSail root health check endpoint."""
+    """Root health check endpoint."""
     return {
         "status": "ok",
         "service": settings.APP_NAME,
@@ -191,9 +191,9 @@ async def root():
     }
 
 
-@app.get("/health", tags=["Health"], include_in_schema=False)
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"], include_in_schema=False)
 async def health_check():
-    """Docker health check endpoint."""
+    """System health check endpoint."""
     return {
         "status": "healthy",
         "service": settings.APP_NAME,
@@ -202,7 +202,7 @@ async def health_check():
     }
 
 
-@app.get("/api/v1/health", tags=["Health"])
+@app.api_route("/api/v1/health", methods=["GET", "HEAD"], tags=["Health"])
 async def api_health():
     """API-level health check with version info."""
     return {
@@ -210,3 +210,4 @@ async def api_health():
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
     }
+
