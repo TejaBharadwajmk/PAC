@@ -37,26 +37,34 @@ async def lifespan(app: FastAPI):
     await init_neo4j()
 
     # ── Automatic Database Table Creation ────────────────────
-    try:
-        from app.database import engine, Base
-        import app.models.user
-        import app.models.crime
-        import app.models.criminal
-        import app.models.victim
-        import app.models.crime_dna
-        import app.models.behaviour
-        import app.models.prediction
-        import app.models.audit_log
-        import app.models.cctns
-        from sqlalchemy import text
+    from app.database import engine, Base
+    import app.models.user
+    import app.models.crime
+    import app.models.criminal
+    import app.models.victim
+    import app.models.crime_dna
+    import app.models.behaviour
+    import app.models.prediction
+    import app.models.audit_log
+    import app.models.cctns
+    from sqlalchemy import text
 
+    # Step 1: Attempt to create extensions if permitted
+    try:
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
+    except Exception as ext_err:
+        logger.info(f"Database extension check note: {ext_err}")
+
+    # Step 2: Create all tables unconditionally
+    try:
+        async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables and vector extensions verified/created successfully.")
+        logger.info("Database tables verified and created successfully.")
     except Exception as exc:
-        logger.warning(f"Database auto-creation skipped or warning: {exc}")
+        logger.error(f"Database table creation status: {exc}")
+
 
     # ── Startup: recover orphaned DNA records ────────────────
     # Any PENDING/FAILED records from before a crash are re-queued
