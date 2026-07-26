@@ -36,6 +36,28 @@ async def lifespan(app: FastAPI):
     # Initialize Neo4j constraints and connectivity
     await init_neo4j()
 
+    # ── Automatic Database Table Creation ────────────────────
+    try:
+        from app.database import engine, Base
+        import app.models.user
+        import app.models.crime
+        import app.models.criminal
+        import app.models.victim
+        import app.models.crime_dna
+        import app.models.behaviour
+        import app.models.prediction
+        import app.models.audit_log
+        import app.models.cctns
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables and vector extensions verified/created successfully.")
+    except Exception as exc:
+        logger.warning(f"Database auto-creation skipped or warning: {exc}")
+
     # ── Startup: recover orphaned DNA records ────────────────
     # Any PENDING/FAILED records from before a crash are re-queued
     # by the DNA service on next startup. Safe to run on every boot.
