@@ -141,7 +141,7 @@ export default function AnalystDashboard() {
             </h2>
             <Link href="/crimes?severity=critical" className="text-[12px] text-[#58a6ff] hover:underline">View all →</Link>
           </div>
-          {criticalCrimes?.items.length ? (
+          {Array.isArray(criticalCrimes?.items) && criticalCrimes.items.length > 0 ? (
             <div className="flex flex-col gap-2">
               {criticalCrimes.items.map((c) => (
                 <Link

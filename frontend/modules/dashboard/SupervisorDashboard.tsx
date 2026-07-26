@@ -74,8 +74,9 @@ export default function SupervisorDashboard() {
     staleTime: STALE_TIME.assistant,
   });
 
-  const solvedCases = allCrimes?.items.filter((c) => c.status === "solved").length ?? 0;
-  const totalCases  = allCrimes?.total ?? 0;
+  const safeCrimeItems = Array.isArray(allCrimes?.items) ? allCrimes.items : [];
+  const solvedCases    = safeCrimeItems.filter((c) => c.status === "solved").length;
+  const totalCases     = allCrimes?.total ?? safeCrimeItems.length;
 
   return (
     <div className="p-6 flex flex-col gap-6 max-w-[1400px]">

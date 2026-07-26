@@ -86,7 +86,8 @@ export default function AdminDashboard() {
     llmHealth?.status === "degraded" ? "degraded" :
     llmHealth ? "down" : "unknown";
 
-  const safeAuditLogs = Array.isArray(auditLogs) ? auditLogs : [];
+  const rawAudit: any = auditLogs;
+  const safeAuditLogs: AuditLogItem[] = Array.isArray(rawAudit) ? rawAudit : Array.isArray(rawAudit?.logs) ? rawAudit.logs : [];
   const safeCctnsLogs = Array.isArray(cctnsLogs) ? cctnsLogs : [];
   const safeAvailableModules = Array.isArray(llmHealth?.available_modules) ? llmHealth.available_modules : [];
 

@@ -21,8 +21,9 @@ export default function OfficerDashboard() {
     staleTime: STALE_TIME.crimes,
   });
 
-  const openCases   = myCases?.items.filter((c) => !["solved", "closed"].includes(c.status)) ?? [];
-  const closedCases = myCases?.items.filter((c) => ["solved", "closed"].includes(c.status)) ?? [];
+  const safeItems   = Array.isArray(myCases?.items) ? myCases.items : [];
+  const openCases   = safeItems.filter((c) => !["solved", "closed"].includes(c.status));
+  const closedCases = safeItems.filter((c) => ["solved", "closed"].includes(c.status));
 
   return (
     <div className="p-6 flex flex-col gap-6 max-w-6xl">
