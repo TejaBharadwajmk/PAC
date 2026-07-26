@@ -1,4 +1,5 @@
 services:
+  # ── PAC FastAPI Web Service ─────────────────────────────────
   - type: web
     name: pac-backend
     env: python
@@ -6,8 +7,54 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
         value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pac-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: pac-redis
+          property: connectionString
+
+  # ── PAC Background Celery Worker Service ────────────────────
+  - type: worker
+    name: pac-worker
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.celery_app.celery_app worker --loglevel=info
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pac-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: pac-redis
+          property: connectionString
+
+# ── Render Managed Infrastructure Services ────────────────────
+databases:
+  - name: pac-postgres
+    databaseName: pac_db
+    user: pac_user
+    region: singapore
+    plan: free
+
+services:
+  - type: redis
+    name: pac-redis
+    region: singapore
+    plan: free
+    maxmemoryPolicy: allkeys-lru

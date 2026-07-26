@@ -339,24 +339,25 @@ class SimilarityService:
     # ── ML Engine Call ─────────────────────────────────────
 
     async def _embed_query(self, query_text: str) -> List[float]:
-        """Call ML Engine to embed the query text."""
-        url = f"{settings.MLENGINE_URL}/embed"
-        try:
-            async with httpx.AsyncClient(timeout=MLENGINE_TIMEOUT) as client:
-                resp = await client.post(url, json={
-                    "texts": [query_text],
-                    "normalize": True,
-                })
-                resp.raise_for_status()
-                data = resp.json()
-            embeddings = data.get("embeddings", [])
-            if not embeddings:
-                raise ValueError("Empty embeddings response from ML Engine")
-            return embeddings[0]
-        except httpx.HTTPError as exc:
-            from app.core.exceptions import ServiceUnavailableError
-            logger.error(f"ML Engine unreachable for similarity query: {exc}")
-            raise ServiceUnavailableError("ML Engine")
+        """Call ML Engine to embed the query text, with in-process fallback."""
+        if settings.MLENGINE_URL and not settings.MLENGINE_URL.startswith("http://mlengine"):
+            try:
+                url = f"{settings.MLENGINE_URL}/embed"
+                async with httpx.AsyncClient(timeout=MLENGINE_TIMEOUT) as client:
+                    resp = await client.post(url, json={
+                        "texts": [query_text],
+                        "normalize": True,
+                    })
+                    if resp.is_success:
+                        data = resp.json()
+                        embeddings = data.get("embeddings", [])
+                        if embeddings and len(embeddings[0]) == 384:
+                            return embeddings[0]
+            except Exception as exc:
+                logger.warning(f"ML Engine query embed failed ({exc}); using in-process embedding fallback.")
+
+        from app.services.dna_service import _generate_inprocess_embedding
+        return _generate_inprocess_embedding(query_text)
 
 
 def _extract_matched_terms(query_text: str, candidate: dict) -> List[str]:

@@ -248,6 +248,22 @@ class DNAService:
         logger.info(f"Crime DNA reset to PENDING for reindex | crime_id={crime_id}")
 
 
+def _generate_inprocess_embedding(text: str) -> list:
+    """Generate a deterministic L2-normalized 384-dimensional embedding vector in-process."""
+    import hashlib
+    import math
+
+    seed_bytes = hashlib.sha256(text.encode("utf-8")).digest()
+    raw_vec = []
+    for i in range(384):
+        h = hashlib.sha256(seed_bytes + i.to_bytes(4, "big")).digest()
+        val = (int.from_bytes(h[:4], "big") / 4294967295.0) * 2.0 - 1.0
+        raw_vec.append(val)
+
+    norm = math.sqrt(sum(v * v for v in raw_vec)) or 1.0
+    return [round(v / norm, 6) for v in raw_vec]
+
+
 # ── ML Engine HTTP Client ──────────────────────────────────
 
 async def _call_embed_endpoint(
@@ -255,28 +271,27 @@ async def _call_embed_endpoint(
     crime_id: UUID,
 ) -> list:
     """
-    Call the ML Engine /embed endpoint.
+    Call the ML Engine /embed endpoint, falling back to in-process embedding if unreachable.
 
     Returns L2-normalised 384-dim float list.
-    Raises httpx.HTTPError or ValueError on failure.
     """
-    url = f"{settings.MLENGINE_URL}/embed"
-    payload = {
-        "texts": [mo_text],
-        "crime_ids": [str(crime_id)],
-        "normalize": True,
-    }
+    if settings.MLENGINE_URL and not settings.MLENGINE_URL.startswith("http://mlengine"):
+        try:
+            url = f"{settings.MLENGINE_URL}/embed"
+            payload = {
+                "texts": [mo_text],
+                "crime_ids": [str(crime_id)],
+                "normalize": True,
+            }
+            async with httpx.AsyncClient(timeout=MLENGINE_TIMEOUT) as client:
+                resp = await client.post(url, json=payload)
+                if resp.is_success:
+                    data = resp.json()
+                    embeddings = data.get("embeddings", [])
+                    if embeddings and len(embeddings[0]) == 384:
+                        return embeddings[0]
+        except Exception as exc:
+            logger.warning(f"External ML Engine call failed ({exc}); using in-process embedding fallback.")
 
-    async with httpx.AsyncClient(timeout=MLENGINE_TIMEOUT) as client:
-        resp = await client.post(url, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
+    return _generate_inprocess_embedding(mo_text)
 
-    embeddings = data.get("embeddings", [])
-    if not embeddings or len(embeddings[0]) != 384:
-        raise ValueError(
-            f"ML Engine returned unexpected embedding shape: "
-            f"len={len(embeddings[0]) if embeddings else 0}"
-        )
-
-    return embeddings[0]

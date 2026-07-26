@@ -31,8 +31,9 @@ import app.models.behaviour     # noqa: E402, F401
 
 target_metadata = Base.metadata
 
-# Override DB URL from environment (takes precedence over alembic.ini)
-sync_url = os.getenv("DATABASE_URL_SYNC")
+# Override DB URL from environment via app settings
+from app.config import settings
+sync_url = settings.sync_database_url
 if sync_url:
     config.set_main_option("sqlalchemy.url", sync_url)
 
