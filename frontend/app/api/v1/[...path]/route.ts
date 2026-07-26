@@ -271,13 +271,19 @@ async function handleRequest(
     } catch {}
   }
 
+  const authHeader = req.headers.get("authorization") || "";
+  if (authHeader.includes("demo_signature") || authHeader.includes("demo_token_")) {
+    const mockRes = getMockResponse(pathStr, req, parsedBody);
+    if (mockRes) return mockRes;
+  }
+
   // Try real backend first if available
   try {
     const backendRes = await fetch(targetUrl, {
       method,
       headers,
       body,
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (backendRes.ok) {

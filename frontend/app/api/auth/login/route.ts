@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       method:  "POST",
       headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
       body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(1200),
+      signal:  AbortSignal.timeout(15000),
     });
 
     if (backendRes.ok) {

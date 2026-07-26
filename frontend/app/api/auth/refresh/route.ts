@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         method:  "POST",
         headers: { "Content-Type": "application/json", "bypass-tunnel-reminder": "true" },
         body:    JSON.stringify({ refresh_token: refreshToken }),
-        signal:  AbortSignal.timeout(1200),
+        signal:  AbortSignal.timeout(15000),
       });
     } catch {
       backendRes = null;
