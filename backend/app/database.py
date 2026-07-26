@@ -18,13 +18,18 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # ── Async engine (FastAPI runtime) ────────────────────────
+engine_kwargs: dict = {"echo": settings.DEBUG}
+if "sqlite" not in settings.DATABASE_URL:
+    engine_kwargs.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_pre_ping": True,
+        "pool_recycle": 3600,
+    })
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,      # Reconnect on stale connections
-    pool_recycle=3600,       # Recycle connections every hour
+    **engine_kwargs
 )
 
 # ── Session factory ────────────────────────────────────────

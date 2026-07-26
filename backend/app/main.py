@@ -170,6 +170,17 @@ app.include_router(
 
 
 # ── Health Endpoints ───────────────────────────────────────
+@app.get("/", tags=["Health"])
+async def root():
+    """AppSail root health check endpoint."""
+    return {
+        "status": "ok",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
+    }
+
+
 @app.get("/health", tags=["Health"], include_in_schema=False)
 async def health_check():
     """Docker health check endpoint."""
