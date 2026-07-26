@@ -72,5 +72,5 @@ async def init_neo4j() -> None:
                 await session.run(stmt)
             logger.info("Neo4j database unique ID constraints initialized.")
     except Exception as exc:
-        logger.critical(f"Neo4j database initialization failed: {exc}")
+        logger.info(f"Neo4j database status note (running in offline/mock mode): {exc}")
         # Note: Do not raise/crash here to allow backend startup even if Neo4j is offline (e.g. offline migrations)

@@ -49,9 +49,10 @@ async def lifespan(app: FastAPI):
     import app.models.cctns
     from sqlalchemy import text
 
-    # Step 1: Attempt to create extensions if permitted
+    # Step 1: Attempt to create required extensions (postgis, vector, uuid-ossp)
     try:
         async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
     except Exception as ext_err:
