@@ -21,7 +21,7 @@ export default function UserManagementPage() {
 
   const { data: me } = useQuery({
     queryKey: ["auth", "me"],
-    queryFn:  authApi.me,
+    queryFn:  () => authApi.me(),
   });
 
   const handleRegister = async (e: React.FormEvent) => {
