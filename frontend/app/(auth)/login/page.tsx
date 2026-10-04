@@ -137,6 +137,12 @@ export default function LoginPage() {
     toast.info(`Selected ${acc.roleTitle} account (${acc.badgeNumber}). Click Sign In to proceed.`);
   };
 
+  const handleQuickLogin = (acc: DemoAccount) => {
+    setValue("badge_number", acc.badgeNumber, { shouldValidate: true });
+    setValue("password", acc.password, { shouldValidate: true });
+    onSubmit({ badge_number: acc.badgeNumber, password: acc.password });
+  };
+
   const handleCopyCredentials = (acc: DemoAccount) => {
     const text = `Badge Number: ${acc.badgeNumber}\nPassword: ${acc.password}`;
     navigator.clipboard.writeText(text);
@@ -503,14 +509,14 @@ export default function LoginPage() {
 
                           <button
                             type="button"
-                            onClick={() => handleUseAccount(acc)}
-                            className="flex-1 py-1.5 px-2 rounded-lg text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+                            onClick={() => handleQuickLogin(acc)}
+                            className="flex-1 py-1.5 px-2 rounded-lg text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm hover:brightness-110 active:scale-95"
                             style={{
                               backgroundColor: acc.accentColor,
                             }}
                           >
-                            <span>Use Account</span>
-                            <ArrowRight size={12} />
+                            <Zap size={12} />
+                            <span>Quick Sign In</span>
                           </button>
                         </div>
                       </div>

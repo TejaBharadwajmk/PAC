@@ -17,7 +17,7 @@ from app.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
 from app.core.audit_middleware import AuditMiddleware
-from app.api.v1.routers import auth, crimes, criminals, similarity, geo, graph, behavior, prediction, assistant, audit, cctns
+from app.api.v1.routers import auth, crimes, criminals, similarity, geo, graph, behavior, prediction, assistant, audit, cctns, dashboard
 from app.graph_db import init_neo4j, close_neo4j
 
 # Setup logging before all other imports that might log
@@ -242,6 +242,11 @@ app.include_router(
     cctns.router,
     prefix="/api/v1/cctns",
     tags=["CCTNS Data Ingestion"],
+)
+app.include_router(
+    dashboard.router,
+    prefix="/api/v1/dashboard",
+    tags=["Dashboard Summary"],
 )
 
 
