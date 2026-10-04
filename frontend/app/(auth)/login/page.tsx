@@ -391,7 +391,7 @@ export default function LoginPage() {
                   <div>
                     <h3 className="text-[15px] font-bold text-[#e6edf3] flex items-center gap-2">
                       <Key size={16} className="text-[#58a6ff]" />
-                      Evaluation Accounts
+                      Authorised Demo Accounts
                     </h3>
                     <p className="text-[11px] text-[#8b949e] mt-0.5">
                       Select any account to populate credentials & test role-based features.
