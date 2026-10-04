@@ -98,20 +98,10 @@ Visitors can use the **Quick Sign In** buttons on the login page or enter creden
 
 ---
 
-## 💻 Local Development & Docker Launch
+## 👨‍💻 Development & Credits
 
-```bash
-# 1. Clone workspace
-git clone https://github.com/TejaBharadwajmk/PAC.git
-cd PAC
-
-# 2. Launch multi-container stack via Docker Compose
-docker-compose up -d
-
-# 3. Access local endpoints
-# Frontend: http://localhost:3000
-# Backend Docs: http://localhost:8000/api/docs
-```
+* **System Architect & Lead Developer**: Built 100% of the technical implementation — including Next.js 16 frontend, FastAPI microservices, PostgreSQL pgvector/PostGIS engines, Neo4j graph topology, Redis caching, and cloud deployments.
+* **Hackathon Collaboration**: Conceived and planned during a hackathon challenge with team problem formulation.
 
 ---
 
