@@ -64,26 +64,31 @@ export default function PredictionsPage() {
       </div>
 
       {/* Overview Statistics Row */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="pac-card flex flex-col gap-2 border-[#f85149]/40">
-            <p className="text-[10px] font-mono text-[#8b949e] uppercase">Total Profiles Modelled</p>
-            <p className="text-[22px] font-mono font-bold text-[#e6edf3]">{stats.total_criminal_predictions}</p>
+      {stats && (() => {
+        const dist = stats.risk_level_distribution ?? {};
+        const criticalCount = dist.CRITICAL ?? dist.critical ?? 0;
+        const highCount = dist.HIGH ?? dist.high ?? 0;
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="pac-card flex flex-col gap-2 border-[#f85149]/40">
+              <p className="text-[10px] font-mono text-[#8b949e] uppercase">Total Profiles Modelled</p>
+              <p className="text-[22px] font-mono font-bold text-[#e6edf3]">{stats.total_criminal_predictions ?? 0}</p>
+            </div>
+            <div className="pac-card flex flex-col gap-2 border-[#e98d30]/40">
+              <p className="text-[10px] font-mono text-[#8b949e] uppercase">Avg Criminal Risk Index</p>
+              <p className="text-[22px] font-mono font-bold text-[#e98d30]">{scoreToPercent(stats.average_criminal_risk_score ?? 0)}</p>
+            </div>
+            <div className="pac-card flex flex-col gap-2 border-[#f85149]/40">
+              <p className="text-[10px] font-mono text-[#8b949e] uppercase">Critical Risk Count</p>
+              <p className="text-[22px] font-mono font-bold text-[#f85149]">{criticalCount}</p>
+            </div>
+            <div className="pac-card flex flex-col gap-2 border-[#d29922]/40">
+              <p className="text-[10px] font-mono text-[#8b949e] uppercase">High Risk Count</p>
+              <p className="text-[22px] font-mono font-bold text-[#d29922]">{highCount}</p>
+            </div>
           </div>
-          <div className="pac-card flex flex-col gap-2 border-[#e98d30]/40">
-            <p className="text-[10px] font-mono text-[#8b949e] uppercase">Avg Criminal Risk Index</p>
-            <p className="text-[22px] font-mono font-bold text-[#e98d30]">{scoreToPercent(stats.average_criminal_risk_score)}</p>
-          </div>
-          <div className="pac-card flex flex-col gap-2 border-[#f85149]/40">
-            <p className="text-[10px] font-mono text-[#8b949e] uppercase">Critical Risk Count</p>
-            <p className="text-[22px] font-mono font-bold text-[#f85149]">{stats.risk_level_distribution.CRITICAL || 0}</p>
-          </div>
-          <div className="pac-card flex flex-col gap-2 border-[#d29922]/40">
-            <p className="text-[10px] font-mono text-[#8b949e] uppercase">High Risk Count</p>
-            <p className="text-[22px] font-mono font-bold text-[#d29922]">{stats.risk_level_distribution.HIGH || 0}</p>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabs */}
       <div className="flex border-b border-[#30363d] gap-2">

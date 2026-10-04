@@ -41,7 +41,7 @@ export default function AnalystDashboard() {
   });
 
   const avgRisk     = predStats?.average_criminal_risk_score ?? 0;
-  const criticalPct = predStats?.risk_level_distribution?.CRITICAL ?? 0;
+  const criticalPct = predStats?.risk_level_distribution?.CRITICAL ?? predStats?.risk_level_distribution?.critical ?? 0;
 
   return (
     <div className="p-6 flex flex-col gap-6 max-w-7xl">

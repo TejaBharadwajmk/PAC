@@ -115,6 +115,10 @@ class PredictionRepository:
                 "low": low,
                 "moderate": mod,
                 "high": high,
-                "critical": critical
+                "critical": critical,
+                "LOW": low,
+                "MODERATE": mod,
+                "HIGH": high,
+                "CRITICAL": critical,
             }
         }
