@@ -237,27 +237,6 @@ export default function LoginPage() {
 
       {/* Main Center Area */}
       <div className="w-full max-w-6xl mx-auto my-auto z-10 flex flex-col items-center">
-        {/* Top Hackathon Evaluation Banner */}
-        {DEMO_MODE && (
-          <div className="w-full max-w-5xl mb-6 p-4 rounded-xl bg-[#161b22]/80 border border-[#1f6feb]/30 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-[0_0_25px_rgba(31,111,235,0.12)]">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/30 mt-0.5 sm:mt-0 flex-shrink-0">
-                <Sparkles size={18} />
-              </div>
-              <div>
-                <h2 className="text-[14px] font-bold text-[#e6edf3] flex items-center gap-2">
-                  Hackathon Evaluation
-                  <span className="px-2 py-0.5 rounded-full bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/40 text-[10px] font-mono font-bold uppercase tracking-wider">
-                    Demo Mode Active
-                  </span>
-                </h2>
-                <p className="text-[12px] text-[#8b949e] mt-0.5 leading-relaxed">
-                  Use any demo account below to explore PAC. Different accounts provide different role-based capabilities.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Layout Split: Form on Left, Demo Accounts on Right (Desktop) */}
         <div className={cn(
